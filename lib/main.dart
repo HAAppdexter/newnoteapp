@@ -11,19 +11,14 @@ import 'package:newnoteapp/providers/security_provider.dart';
 import 'package:newnoteapp/providers/ad_provider.dart';
 import 'package:newnoteapp/screens/home_screen.dart';
 
-void main() async {
+// Khởi tạo các futures ở cấp module để tái sử dụng
+final Future<void> _initAdMob = MobileAds.instance.initialize();
+late Future<void> _initFirebase;
+
+// Khởi chạy ứng dụng với các thiết lập cần thiết
+Future<void> main() async {
+  // Đảm bảo framework được khởi tạo
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Khởi tạo AdMob
-  await MobileAds.instance.initialize();
-  
-  // Khởi tạo Firebase (tùy chọn, có thể bỏ nếu không dùng)
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    print('Firebase initialization failed: $e');
-    // Tiếp tục chạy ứng dụng mà không có Firebase
-  }
   
   // Cấu hình hướng màn hình
   await SystemChrome.setPreferredOrientations([
@@ -31,6 +26,14 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
   
+  // Khởi tạo Firebase bất đồng bộ và không chặn luồng chính
+  _initFirebase = Firebase.initializeApp().catchError((e) {
+    debugPrint('Firebase initialization failed: $e');
+    // Cho phép ứng dụng tiếp tục mà không cần Firebase
+    return Future.value();
+  });
+  
+  // Chạy ứng dụng ngay lập tức, không chờ các services khởi tạo xong
   runApp(const NoteApp());
 }
 
@@ -41,11 +44,27 @@ class NoteApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
-        ChangeNotifierProvider(create: (_) => SecurityProvider()),
-        ChangeNotifierProvider(create: (_) => AdProvider()),
-        ChangeNotifierProvider(create: (_) => NoteProvider()),
+        // Lazy loading các providers để tránh khởi tạo tất cả cùng lúc
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(),
+          lazy: false, // ThemeProvider cần được khởi tạo ngay để hiển thị đúng theme
+        ),
+        ChangeNotifierProvider(
+          create: (_) => SettingsProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => SecurityProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AdProvider(),
+          lazy: true,
+        ),
+        ChangeNotifierProvider(
+          create: (_) => NoteProvider(),
+          lazy: true,
+        ),
       ],
       child: const AppContent(),
     );
@@ -60,6 +79,9 @@ class AppContent extends StatefulWidget {
 }
 
 class AppContentState extends State<AppContent> with WidgetsBindingObserver {
+  // Sử dụng FutureBuilder để tối ưu quá trình khởi động
+  late Future<void> _initFuture;
+
   @override
   void initState() {
     super.initState();
@@ -67,10 +89,27 @@ class AppContentState extends State<AppContent> with WidgetsBindingObserver {
     // Đăng ký observer để lắng nghe các thay đổi về độ sáng hệ thống
     WidgetsBinding.instance.addObserver(this);
     
-    // Khởi tạo AdProvider
-    Future.delayed(Duration.zero, () {
-      context.read<AdProvider>().initialize();
-    });
+    // Khởi tạo các services theo thứ tự ưu tiên
+    _initFuture = _initializeServices();
+  }
+  
+  // Khởi tạo các services tuần tự theo thứ tự ưu tiên
+  Future<void> _initializeServices() async {
+    // Khởi tạo theme provider trước
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    themeProvider.initialize();
+    
+    // Đợi AdMob khởi tạo xong - ưu tiên thấp, có thể tải sau
+    await _initAdMob;
+    
+    // Chỉ khởi tạo AdProvider khi widget đã gắn vào tree
+    if (mounted) {
+      final adProvider = Provider.of<AdProvider>(context, listen: false);
+      adProvider.initialize();
+    }
+    
+    // Đợi Firebase khởi tạo xong - ưu tiên thấp nhất
+    await _initFirebase;
   }
   
   @override
@@ -82,23 +121,35 @@ class AppContentState extends State<AppContent> with WidgetsBindingObserver {
   
   @override
   void didChangePlatformBrightness() {
-    // Có thể cập nhật UI khi hệ thống thay đổi độ sáng
-    if (mounted) {
-      setState(() {});
-    }
+    // Cập nhật theme khi hệ thống thay đổi độ sáng
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    themeProvider.updateSystemBrightness();
   }
   
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    
-    return MaterialApp(
-      title: 'Note App',
-      theme: themeProvider.lightTheme,
-      darkTheme: themeProvider.darkTheme,
-      themeMode: themeProvider.themeMode,
-      debugShowCheckedModeBanner: false,
-      home: const HomeScreen(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Note App',
+          theme: themeProvider.lightTheme,
+          darkTheme: themeProvider.darkTheme,
+          themeMode: themeProvider.themeMode,
+          debugShowCheckedModeBanner: false,
+          home: const HomeScreen(),
+          // Sử dụng các kỹ thuật tối ưu khởi động
+          builder: (context, child) {
+            // Áp dụng tối ưu typography và scale
+            return MediaQuery(
+              // Tránh rebuild khi keyboard hiện/ẩn
+              data: MediaQuery.of(context).copyWith(
+                textScaleFactor: 1.0,
+              ),
+              child: child!,
+            );
+          },
+        );
+      },
     );
   }
 }

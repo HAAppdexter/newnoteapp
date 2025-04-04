@@ -5,6 +5,7 @@ import 'package:newnoteapp/providers/settings_provider.dart';
 import 'package:newnoteapp/models/note.dart';
 import 'package:newnoteapp/database/note_repository.dart';
 import 'package:intl/intl.dart';
+import 'package:newnoteapp/screens/notes/widgets/note_card.dart';
 
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
@@ -13,12 +14,16 @@ class NotesScreen extends StatefulWidget {
   State<NotesScreen> createState() => _NotesScreenState();
 }
 
-class _NotesScreenState extends State<NotesScreen> {
+class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClientMixin {
   bool _isLoading = false;
   String _filter = 'all'; // all, pinned, archived, deleted
   String _view = 'grid'; // grid, list
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  
+  // Đảm bảo state được giữ khi chuyển tab
+  @override
+  bool get wantKeepAlive => true;
   
   @override
   void initState() {
@@ -32,6 +37,12 @@ class _NotesScreenState extends State<NotesScreen> {
         _view = settingsProvider.defaultView;
       });
     });
+  }
+  
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
   
   Future<void> _loadNotes() async {
@@ -222,6 +233,8 @@ class _NotesScreenState extends State<NotesScreen> {
   
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Needed for AutomaticKeepAliveClientMixin
+    
     return Scaffold(
       appBar: AppBar(
         title: _searchQuery.isEmpty

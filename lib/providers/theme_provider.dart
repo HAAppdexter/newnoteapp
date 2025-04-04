@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:newnoteapp/services/settings_service.dart';
 import 'package:newnoteapp/themes/app_theme.dart';
 
@@ -6,36 +7,62 @@ class ThemeProvider extends ChangeNotifier {
   late SettingsService _settingsService;
   late ThemeMode _themeMode;
   late Color _accentColor;
-  Brightness? _lastBrightness;
+  Brightness? _lastSystemBrightness;
+  
+  // Lưu cache theme data để tránh tạo lại nhiều lần
+  ThemeData? _cachedLightTheme;
+  ThemeData? _cachedDarkTheme;
+  bool _isInitialized = false;
 
   ThemeProvider() {
     _settingsService = SettingsService();
     _themeMode = ThemeMode.system;
     _accentColor = Colors.blue;
-    _loadSettings();
+    
+    // Lấy brightness hiện tại của hệ thống
+    _lastSystemBrightness = SchedulerBinding.instance.platformDispatcher.platformBrightness;
+  }
+  
+  // Khởi tạo provider với dữ liệu từ bộ nhớ cục bộ
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    await _loadSettings();
     _setupBrightnessListener();
+    _isInitialized = true;
   }
 
   // Thiết lập theo dõi thay đổi brightness của hệ thống
   void _setupBrightnessListener() {
-    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = () {
-      final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-      if (_lastBrightness != brightness && _themeMode == ThemeMode.system) {
-        _lastBrightness = brightness;
-        notifyListeners(); // Thông báo UI cập nhật khi brightness thay đổi
-      }
+    SchedulerBinding.instance.platformDispatcher.onPlatformBrightnessChanged = () {
+      // Chỉ cập nhật UI nếu đang sử dụng theme theo hệ thống
+      updateSystemBrightness();
     };
-    _lastBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+  }
+  
+  // Cập nhật theme khi hệ thống thay đổi độ sáng
+  void updateSystemBrightness() {
+    final currentBrightness = SchedulerBinding.instance.platformDispatcher.platformBrightness;
+    if (_lastSystemBrightness != currentBrightness && _themeMode == ThemeMode.system) {
+      _lastSystemBrightness = currentBrightness;
+      notifyListeners();
+    }
   }
 
   // Getter cho theme mode
   ThemeMode get themeMode => _themeMode;
 
-  // Getter cho light theme
-  ThemeData get lightTheme => AppTheme.getTheme(isDark: false);
+  // Getter cho light theme với cache
+  ThemeData get lightTheme {
+    _cachedLightTheme ??= AppTheme.getTheme(isDark: false, accentColor: _accentColor);
+    return _cachedLightTheme!;
+  }
 
-  // Getter cho dark theme
-  ThemeData get darkTheme => AppTheme.getTheme(isDark: true);
+  // Getter cho dark theme với cache
+  ThemeData get darkTheme {
+    _cachedDarkTheme ??= AppTheme.getTheme(isDark: true, accentColor: _accentColor);
+    return _cachedDarkTheme!;
+  }
 
   // Getter cho accent color
   Color get accentColor => _accentColor;
@@ -43,7 +70,7 @@ class ThemeProvider extends ChangeNotifier {
   // Kiểm tra xem đang sử dụng dark mode hay không
   bool get isDarkMode {
     if (_themeMode == ThemeMode.system) {
-      return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+      return SchedulerBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
     }
     return _themeMode == ThemeMode.dark;
   }
@@ -62,6 +89,11 @@ class ThemeProvider extends ChangeNotifier {
     if (_accentColor == color) return;
     
     _accentColor = color;
+    
+    // Xóa cache khi thay đổi màu accent để tạo lại theme data
+    _cachedLightTheme = null;
+    _cachedDarkTheme = null;
+    
     await _settingsService.setAccentColor(color);
     notifyListeners();
   }
@@ -75,8 +107,20 @@ class ThemeProvider extends ChangeNotifier {
   Future<void> _loadSettings() async {
     await _settingsService.init();
     
-    _themeMode = _settingsService.getThemeMode();
-    _accentColor = _settingsService.getAccentColor();
+    final savedThemeMode = _settingsService.getThemeMode();
+    final savedAccentColor = _settingsService.getAccentColor();
+    
+    // Chỉ cập nhật nếu có thay đổi thực sự
+    if (_themeMode != savedThemeMode) {
+      _themeMode = savedThemeMode;
+    }
+    
+    if (_accentColor != savedAccentColor) {
+      _accentColor = savedAccentColor;
+      // Xóa cache khi thay đổi màu accent
+      _cachedLightTheme = null;
+      _cachedDarkTheme = null;
+    }
     
     notifyListeners();
   }
@@ -84,7 +128,7 @@ class ThemeProvider extends ChangeNotifier {
   @override
   void dispose() {
     // Hủy listener khi provider bị dispose
-    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = null;
+    SchedulerBinding.instance.platformDispatcher.onPlatformBrightnessChanged = null;
     super.dispose();
   }
 } 
