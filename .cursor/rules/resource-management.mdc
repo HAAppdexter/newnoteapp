@@ -1,0 +1,129 @@
+---
+description: Quy tắc quản lý tài nguyên trong dự án, bao gồm icons và rules
+globs: "*.*"
+alwaysApply: false
+---
+# Quy Tắc Quản Lý Tài Nguyên
+description: Quy tắc quản lý tài nguyên trong dự án, bao gồm icons và rules
+globs: "*.*"
+
+## Nguyên Tắc Chung
+- ***BẮT BUỘC*** tổ chức tài nguyên theo cấu trúc thư mục rõ ràng
+- ***BẮT BUỘC*** ghi lại nguồn gốc và license của tất cả tài nguyên bên ngoài
+- ***BẮT BUỘC*** cập nhật documentation khi thêm hoặc thay đổi tài nguyên
+- ***BẮT BUỘC*** backup tài nguyên trước khi thực hiện thay đổi lớn
+- ***KHUYẾN NGHỊ*** sử dụng API để tải và quản lý tài nguyên
+- ***KHUYẾN NGHỊ*** tối ưu hoá kích thước tài nguyên trước khi sử dụng
+
+## Quản Lý Icons
+- ***BẮT BUỘC*** sử dụng Icon Library API để tìm kiếm và tải về icons
+- ***BẮT BUỘC*** tổ chức icons theo cấu trúc thư mục phân loại
+- ***BẮT BUỘC*** đặt tên file icon theo format: `[tên-icon]_[kích-thước].[định-dạng]`
+- ***BẮT BUỘC*** cập nhật README.md trong thư mục assets/icons với thông tin mới
+- ***BẮT BUỘC*** backup icons vào thư mục `_backups/icons/` trước khi thay thế
+- ***KHUYẾN NGHỊ*** tối ưu hoá SVG trước khi sử dụng
+
+### Cấu Trúc Thư Mục Icons
+Duy trì cấu trúc thư mục icon theo mẫu:
+```
+assets/icons/
+├── ui/                  # Icon giao diện người dùng (buttons, menu, etc.)
+├── weather/             # Icon thời tiết
+├── social/              # Icon mạng xã hội
+└── misc/                # Icon khác
+```
+
+### Quy Trình Sử Dụng Icon Library API
+1. Xác định nhu cầu icon từ instruction/yêu cầu dự án
+2. Tìm kiếm icon phù hợp qua Icon Library API:
+   ```bash
+   curl -G --data-urlencode "q=your_search_term" https://icon-library.leejungkiin.workers.dev/search
+   ```
+3. Tải icon về thư mục phù hợp trong `assets/icons/`
+4. Ghi lại thông tin về icon trong bảng trong README.md
+5. Sử dụng icon trong code với đường dẫn tương đối
+
+### Các API Endpoint Chính
+- Danh sách bộ icon: `GET /icon-sets`
+- Tìm kiếm icon: `GET /search?q=term`
+- Đề xuất icon theo ngữ cảnh: `GET /suggest?context=description`
+
+## Quản Lý Cursor Rules
+- ***BẮT BUỘC*** lưu trữ rules trong thư mục `.cursor/rules`
+- ***BẮT BUỘC*** kiểm tra phiên bản mới nhất của các rules thông qua API endpoint `/rules`
+- ***BẮT BUỘC*** cập nhật rules khi có phiên bản mới
+- ***BẮT BUỘC*** cấu hình file `.cursorrc` để xác định rules áp dụng tự động
+- ***BẮT BUỘC*** ghi lại thay đổi rules trong Changelog.md
+- ***KHUYẾN NGHỊ*** đồng bộ rules giữa local và server thường xuyên
+
+### Quy Ước Đặt Tên Rule
+- Sử dụng định dạng kebab-case cho tên file: `ten-rule-cua-ban.mdc`
+- Tên file phải phản ánh mục đích của rule
+
+### Cấu Trúc File Rule
+```markdown
+---
+description: Mô tả ngắn gọn về rule
+globs: "*.js,*.jsx,*.ts,*.tsx" (hoặc pattern phù hợp)
+alwaysApply: false
+---
+# Tên Rule
+description: Mô tả đầy đủ về rule
+globs: "*.js,*.jsx,*.ts,*.tsx"
+
+## Phần 1
+- Nội dung rule
+
+## Phần 2
+- Nội dung rule
+```
+
+### Đồng Bộ Hoá Rules
+Sử dụng các lệnh sau để đồng bộ rules:
+```bash
+# Tải rules từ local lên server
+npm run rules:upload
+
+# Tải rules từ server về local
+npm run rules:download
+
+# Đồng bộ hai chiều
+npm run rules:sync
+```
+
+### Cấu Hình Rules
+Cấu hình trong `.cursorrc` theo mẫu:
+```json
+{
+  "rules": {
+    "enabled": true,
+    "alwaysApplyRules": ["rule-1.mdc", "rule-2.mdc"],
+    "autoApplyRules": {
+      "*.js": ["javascript-rules.mdc"],
+      "*.py": ["python-rules.mdc"]
+    }
+  },
+  "sync": {
+    "enabled": true,
+    "syncOnStart": true,
+    "syncInterval": 86400,
+    "apiEndpoint": "https://icon-library.leejungkiin.workers.dev/rules"
+  }
+}
+```
+
+## Quản Lý Tài Nguyên Khác
+- Lưu trữ fonts trong `assets/fonts/`
+- Lưu trữ hình ảnh trong `assets/images/`
+- Lưu trữ videos trong `assets/videos/`
+- Luôn ghi lại license và nguồn gốc
+- Tối ưu hoá kích thước tài nguyên trước khi sử dụng
+
+## Lưu Ý Quan Trọng
+- Tránh commit tài nguyên có kích thước lớn lên Git repository
+- Sử dụng Git LFS nếu cần quản lý file lớn
+- Thường xuyên dọn dẹp tài nguyên không sử dụng
+- Kiểm tra license của tài nguyên trước khi sử dụng
+- Backup tài nguyên quan trọng thường xuyên
+
+@file ../assets/icons/README.md 

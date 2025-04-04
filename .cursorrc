@@ -1,0 +1,65 @@
+{
+  "rules": {
+    "enabled": true,
+    "alwaysApplyRules": [
+      "cursor-optimization-rules.mdc",
+      "file-protection-rules.mdc",
+      "instruction-workflow-rules.mdc",
+      "resource-management.mdc",
+      "project-personality-generator.mdc"
+    ],
+    "autoApplyRules": {
+      "*.js": [
+        "frontend-rules.mdc"
+      ],
+      "*.tsx": [
+        "frontend-rules.mdc"
+      ],
+      "*.jsx": [
+        "frontend-rules.mdc"
+      ],
+      "*.py": [
+        "backend-rules-optimized.mdc"
+      ],
+      "*.java": [
+        "backend-rules-optimized.mdc"
+      ],
+      "*.md": [
+        "documentation-rules.mdc"
+      ],
+      "*.smali": [
+        "smali-rules.mdc"
+      ],
+      "*.sh": [
+        "terminal-rules.mdc"
+      ],
+      "Dockerfile": [
+        "infrastructure-rules.mdc"
+      ],
+      "docker-compose.yml": [
+        "infrastructure-rules.mdc"
+      ],
+      "assets/icons/**": [
+        "resource-management.mdc"
+      ],
+      "*.sql": [
+        "supabase-mcp-workflow.mdc"
+      ],
+      "supabase/**": [
+        "supabase-mcp-workflow.mdc"
+      ],
+      "db-schema.sql": [
+        "supabase-mcp-workflow.mdc"
+      ],
+      ".env": [
+        "supabase-mcp-workflow.mdc"
+      ]
+    }
+  },
+  "sync": {
+    "enabled": true,
+    "syncOnStart": true,
+    "syncInterval": 86400,
+    "apiEndpoint": "https://icon-library.leejungkiin.workers.dev/rules"
+  }
+} 

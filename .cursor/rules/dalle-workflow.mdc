@@ -1,0 +1,462 @@
+---
+description: Quy trình sử dụng DALL-E để tạo và xử lý ảnh vector
+globs: "*.*"
+alwaysApply: false
+---
+# Quy Trình Sử Dụng DALL-E
+description: Quy trình sử dụng DALL-E để tạo và xử lý ảnh vector
+globs: "*.*"
+
+## Nguyên Tắc Cơ Bản
+- ***BẮT BUỘC*** kiểm tra sự tồn tại của DALL-E API key trong file .env
+- ***BẮT BUỘC*** xử lý ảnh tạo ra từ DALL-E để tối ưu cho mục đích sử dụng
+- ***BẮT BUỘC*** tổ chức ảnh tạo ra vào thư mục assets/images hoặc assets/icons
+- ***BẮT BUỘC*** ghi lại thông tin về ảnh được tạo trong README của thư mục tương ứng
+- ***BẮT BUỘC*** cảnh báo chi phí tạo ảnh DALL-E 3 (0,08$ mỗi ảnh) trước khi tiến hành
+- ***BẮT BUỘC*** tối ưu prompt trước khi gửi request
+- ***KHUYẾN NGHỊ*** sử dụng tính năng vector cho các icon và illustration
+
+## Cảnh Báo Chi Phí
+
+Trước khi tạo ảnh bằng DALL-E 3, luôn hiển thị cảnh báo chi phí:
+
+```bash
+echo "⚠️ CẢNH BÁO CHI PHÍ: Mỗi ảnh tạo bởi DALL-E 3 có chi phí khoảng 0,08$ (1.024x1.024 pixels)"
+echo "Vui lòng cân nhắc trước khi tạo ảnh và chỉ tạo khi thực sự cần thiết."
+read -p "Bạn có muốn tiếp tục? (y/n): " confirm
+if [[ $confirm != [yY] ]]; then
+  echo "Đã hủy tạo ảnh."
+  exit 0
+fi
+```
+
+## Kiểm Tra Cấu Hình API Key
+
+Trước khi sử dụng, cần đảm bảo DALL-E API key đã được cấu hình trong file `.env`:
+
+```bash
+if [ ! -f .env ] || ! grep -q "DALL-E_API_KEY" .env; then
+  echo "Lỗi: Thiếu DALL-E_API_KEY trong file .env"
+  exit 1
+fi
+```
+
+## Quy Trình Tạo Ảnh
+
+### 1. Tạo Ảnh Từ Mô Tả Văn Bản
+Khi nhận được yêu cầu "Tạo ảnh [mô tả]":
+
+1. Xác định loại ảnh cần tạo (photo, art, icon, etc.)
+2. Cảnh báo về chi phí và xác nhận với người dùng
+3. Tối ưu prompt dựa trên loại ảnh
+4. Tạo ảnh sử dụng DALL-E API
+5. Lưu và xử lý ảnh theo nhu cầu
+
+```bash
+# Hiển thị cảnh báo chi phí
+echo "⚠️ CẢNH BÁO CHI PHÍ: Mỗi ảnh tạo bởi DALL-E 3 có chi phí khoảng 0,08$ (1.024x1.024 pixels)"
+echo "Vui lòng cân nhắc trước khi tạo ảnh và chỉ tạo khi thực sự cần thiết."
+read -p "Bạn có muốn tiếp tục? (y/n): " confirm
+if [[ $confirm != [yY] ]]; then
+  echo "Đã hủy tạo ảnh."
+  exit 0
+fi
+
+# Tạo ảnh thông thường
+node scripts/dalle/generate_image.js --prompt "Mô tả chi tiết" --output "assets/images/ten-anh.png"
+
+# Tạo ảnh theo phong cách vector/icon
+node scripts/dalle/generate_image.js --prompt "Mô tả icon" --vector --output "assets/icons/ten-icon.png"
+```
+
+### 2. Sửa Ảnh Đã Có
+Khi nhận được yêu cầu "Sửa ảnh [đường dẫn]":
+
+1. Phân tích ảnh hiện có để tạo mô tả
+2. Cảnh báo về chi phí và xác nhận với người dùng
+3. Tạo/chỉnh sửa prompt dựa trên mô tả và yêu cầu mới
+4. Tạo ảnh mới từ prompt đã chỉnh sửa
+5. Lưu và xử lý ảnh mới
+
+```bash
+# Phân tích ảnh hiện có
+node scripts/dalle/analyze_image.js --input "duong-dan-anh-goc.png" --output "temp-prompt.txt"
+
+# Hiển thị cảnh báo chi phí
+echo "⚠️ CẢNH BÁO CHI PHÍ: Mỗi ảnh tạo bởi DALL-E 3 có chi phí khoảng 0,08$ (1.024x1.024 pixels)"
+echo "Vui lòng cân nhắc trước khi tạo ảnh và chỉ tạo khi thực sự cần thiết."
+read -p "Bạn có muốn tiếp tục? (y/n): " confirm
+if [[ $confirm != [yY] ]]; then
+  echo "Đã hủy tạo ảnh."
+  exit 0
+fi
+
+# Tạo ảnh mới từ prompt đã chỉnh sửa
+node scripts/dalle/generate_image.js --prompt "$(cat temp-prompt.txt) [thêm yêu cầu mới]" --output "duong-dan-anh-moi.png"
+```
+
+### 3. Chuyển Đổi Ảnh Sang Vector
+Khi cần chuyển đổi ảnh bitmap thành vector:
+
+```bash
+# Chuyển đổi sang SVG
+node scripts/dalle/vectorize_image.js --input "duong-dan-anh.png" --output "duong-dan-vector.svg"
+```
+
+## Quy Ước Đặt Tên File
+
+- Ảnh thông thường: `[chủ-đề]-[variant].[định-dạng]`
+- Icon: `icon-[tên-icon]-[kích-thước].[định-dạng]`
+- Illustration: `illustration-[tên]-[variant].[định-dạng]`
+
+Ví dụ:
+- `sunset-mountain-colorful.png`
+- `icon-email-24.svg`
+- `illustration-dashboard-dark.svg`
+
+## Tối Ưu Prompt Cho Từng Loại Ảnh
+
+### Ảnh Thông Thường
+```
+[Mô tả chi tiết về chủ đề, bố cục, màu sắc, phong cách]
+```
+
+### Ảnh Phong Cách Vector
+```
+Create a minimalist vector illustration with simple clean lines, flat design style, using only essential shapes. The illustration should show [mô tả]. Make it suitable for SVG conversion, with clean outlines, limited color palette, and no gradients or complex details.
+```
+
+### Icon
+```
+Create a simple, minimalist icon representing [mô tả]. Use flat design with clean outlines, minimal details, solid colors, and simple shapes. The icon should be recognizable at small sizes and suitable for UI design. Avoid gradients, shadows, and complex details. Use a limited color palette with strong contrast.
+```
+
+### Icon Ứng Dụng Mobile
+```
+Design a modern app icon for [tên ứng dụng/mục đích], using a simple and recognizable symbol. The icon should follow material design or iOS guidelines with a limited color palette (2-3 colors maximum). Create clean shapes with strong silhouettes that remain recognizable at small sizes. Avoid text, intricate details, and overly complex imagery.
+```
+
+### UI Icon Set
+```
+Create a consistent set of [số lượng] minimal UI icons for [mục đích]. Icons should be simple, single-color (monochrome) line/solid style, uniform thickness, with clean geometric shapes. Design them to work well at small sizes (24x24px) with clear silhouettes. Icons needed: [liệt kê các icon cần thiết]. Ensure consistent style across all icons.
+```
+
+## Quy Trình Tối Ưu Prompt
+
+Trước khi gửi prompt đến DALL-E, cần tối ưu prompt với các yếu tố:
+
+1. **Xác định loại ảnh cần tạo**: Icon, illustration, ảnh thực tế, etc.
+2. **Chọn template phù hợp**: Sử dụng các template mẫu ở trên
+3. **Bổ sung chi tiết cụ thể**: Thêm thông tin về:
+   - Phong cách (flat, outline, gradient, etc.)
+   - Màu sắc (palette cụ thể, số lượng màu)
+   - Kích thước và tỷ lệ
+   - Mục đích sử dụng (UI, marketing, documentation, etc.)
+4. **Đơn giản hóa description**: Loại bỏ chi tiết không cần thiết
+5. **Thêm từ khóa chuyên biệt**: 
+   - Cho vector: "minimalist", "clean lines", "flat design", "SVG-ready"
+   - Cho icon: "recognizable", "clear silhouette", "consistent weight"
+
+### Quy Trình Tối Ưu Tự Động
+
+```bash
+# Tối ưu prompt theo phong cách vector
+function optimize_vector_prompt() {
+  local input="$1"
+  echo "Create a minimalist vector illustration with simple clean lines, flat design style, using only essential shapes. The illustration should show: $input. Make it suitable for SVG conversion, with clean outlines, limited color palette, and no gradients or complex details."
+}
+
+# Tối ưu prompt theo phong cách icon
+function optimize_icon_prompt() {
+  local input="$1"
+  echo "Create a simple, minimalist icon representing $input. Use flat design with clean outlines, minimal details, solid colors, and simple shapes. The icon should be recognizable at small sizes and suitable for UI design. Avoid gradients, shadows, and complex details. Use a limited color palette with strong contrast."
+}
+
+# Sử dụng hàm tối ưu
+prompt=$(optimize_icon_prompt "your original description")
+```
+
+## Quản Lý Tài Nguyên Ảnh
+
+- Lưu ảnh thông thường vào `assets/images/`
+- Lưu icon vào `assets/icons/`
+- Lưu vector art và illustrations vào `assets/illustrations/`
+- Cập nhật README.md trong mỗi thư mục với thông tin về ảnh mới
+
+## Lệnh Hỗ Trợ Nhanh
+
+### Tạo Ảnh Nhanh (Với Cảnh Báo Chi Phí)
+```bash
+# Hiển thị cảnh báo chi phí
+echo "⚠️ CẢNH BÁO CHI PHÍ: Mỗi ảnh tạo bởi DALL-E 3 có chi phí khoảng 0,08$ (1.024x1.024 pixels)"
+echo "Vui lòng cân nhắc trước khi tạo ảnh và chỉ tạo khi thực sự cần thiết."
+read -p "Bạn có muốn tiếp tục? (y/n): " confirm
+if [[ $confirm == [yY] ]]; then
+  node scripts/dalle/generate_image.js -p "Mô tả ảnh" -o "output.png"
+fi
+```
+
+### Phân Tích Ảnh Nhanh
+```bash
+node scripts/dalle/analyze_image.js -i "input.jpg"
+```
+
+### Chuyển Vector Nhanh
+```bash
+node scripts/dalle/vectorize_image.js -i "input.png" -o "output.svg"
+```
+
+## Quy Trình Đầy Đủ Tạo Icon
+
+1. Tối ưu prompt cho icon:
+```bash
+read -p "Mô tả icon cần tạo: " icon_description
+optimized_prompt="Create a simple, minimalist icon representing $icon_description. Use flat design with clean outlines, minimal details, solid colors, and simple shapes. The icon should be recognizable at small sizes and suitable for UI design. Avoid gradients, shadows, and complex details. Use a limited color palette with strong contrast."
+```
+
+2. Cảnh báo chi phí:
+```bash
+echo "⚠️ CẢNH BÁO CHI PHÍ: Mỗi ảnh tạo bởi DALL-E 3 có chi phí khoảng 0,08$ (1.024x1.024 pixels)"
+echo "Vui lòng cân nhắc trước khi tạo ảnh và chỉ tạo khi thực sự cần thiết."
+read -p "Bạn có muốn tiếp tục? (y/n): " confirm
+if [[ $confirm != [yY] ]]; then
+  echo "Đã hủy tạo ảnh."
+  exit 0
+fi
+```
+
+3. Tạo draft icon với DALL-E:
+```bash
+node scripts/dalle/generate_image.js -p "$optimized_prompt" -v -o "draft-icon.png"
+```
+
+4. Chuyển đổi sang vector:
+```bash
+node scripts/dalle/vectorize_image.js -i "draft-icon.png" -o "assets/icons/icon-name.svg" -c 5 -s 80
+```
+
+5. Tối ưu và chỉnh sửa SVG nếu cần thiết
+
+6. Cập nhật README trong thư mục icons
+
+## Tích Hợp Với Quy Trình Phát Triển
+
+### Trong Frontend Development
+- Sử dụng các icon và illustration đã tạo trong components
+- Đảm bảo tối ưu kích thước và hiệu suất
+- Sử dụng SVG cho các tài nguyên trong UI
+
+### Trong Design System
+- Tạo và duy trì một thư viện icon nhất quán
+- Đảm bảo style thống nhất giữa các icon
+- Tài liệu hóa cách sử dụng các tài nguyên hình ảnh
+
+## Ghi Chú Quan Trọng
+- Chi phí tạo ảnh DALL-E 3 là khoảng 0,08$ mỗi ảnh - luôn cân nhắc trước khi tạo
+- Không lưu trữ ảnh kích thước lớn trong repository Git
+- Chỉ commit các file SVG và ảnh đã tối ưu
+- Lưu prompt đã sử dụng cùng với ảnh để dễ dàng chỉnh sửa sau này
+- Tạo backup trước khi thay thế ảnh hiện có
+- Ưu tiên tối ưu prompt thay vì tạo nhiều ảnh để tiết kiệm chi phí
+
+@file ../scripts/dalle/README.md
+@file ../.env 
+
+## 👆 Mandatory Checks
+
+1. Kiểm tra DALL-E API key đã được cấu hình trong .env
+    - 🔴 API key phải có dạng `DALL_E_API_KEY=sk-...` trong file `.env` ở thư mục gốc dự án
+    - 🔴 Nếu không có, báo cho user "Vui lòng thêm DALL-E API key vào file .env"
+
+2. 💲 Cảnh Báo Chi Phí:
+    - 🔴 PHẢI hiển thị cảnh báo về chi phí trước khi tạo ảnh với DALL-E
+    - 🔴 Yêu cầu user xác nhận trước khi tiếp tục
+
+3. 🎯 Tối Ưu Prompt:
+    - 🔴 PHẢI tối ưu prompt trước khi gửi tới DALL-E
+    - 🔴 Áp dụng template phù hợp cho từng loại ảnh (vector, icon, app icon, UI icons)
+
+## 🌟 Quy Trình Tạo Ảnh
+
+1. **Kiểm Tra API Key**
+   - Kiểm tra file `.env` có chứa `DALL_E_API_KEY`
+   - Nếu không có, yêu cầu user thêm key
+
+2. **Hiển Thị Cảnh Báo Chi Phí**
+   - Thông báo: "⚠️ Cảnh Báo Chi Phí ⚠️"
+   - Nêu rõ: "Tạo ảnh với DALL-E 3 sẽ tốn khoảng 0,08$ mỗi ảnh (1024x1024 pixels)"
+   - Hỏi: "Bạn có chắc chắn muốn tiếp tục không? (y/n)"
+   - Chỉ tiếp tục khi user xác nhận bằng 'y'
+
+3. **Tối Ưu Prompt**
+   - Xác định loại ảnh cần tạo (vector, icon, app icon, UI icon set)
+   - Áp dụng template tối ưu tương ứng
+   - Hiển thị prompt đã tối ưu và cho phép user điều chỉnh nếu cần
+
+4. **Tạo Ảnh**
+   - Sử dụng DALL-E API để tạo ảnh
+   - Lưu ảnh và prompt đã sử dụng
+
+5. **Xử Lý Sau Tạo Ảnh** (tùy chọn)
+   - Chuyển đổi thành vector SVG nếu cần
+   - Tối ưu hóa ảnh vector
+
+## 📦 Scripts Có Sẵn
+
+- `scripts/dalle/generate_image.js`: Tạo ảnh từ prompt sử dụng DALL-E
+- `scripts/dalle/analyze_image.js`: Phân tích ảnh có sẵn và tạo prompt mô tả
+- `scripts/dalle/vectorize_image.js`: Chuyển đổi ảnh bitmap thành vector SVG
+- `scripts/dalle/install_deps.sh`: Cài đặt các phụ thuộc cần thiết
+
+## 🎯 Tối Ưu Prompt
+
+### Templates Cho Các Loại Ảnh
+
+#### Vector/Illustration Template:
+```
+Create a minimalist vector illustration with simple clean lines, flat design style, using only essential shapes. The illustration should show: [SUBJECT]. Make it suitable for SVG conversion, with clean outlines, limited color palette, and no gradients or complex details.
+```
+
+#### Icon Template:
+```
+Create a simple, minimalist icon representing [SUBJECT]. Use flat design with clean outlines, minimal details, solid colors, and simple shapes. The icon should be recognizable at small sizes and suitable for UI design. Avoid gradients, shadows, and complex details. Use a limited color palette with strong contrast.
+```
+
+#### App Icon Template:
+```
+Design a modern app icon for [APP NAME], using a simple and recognizable symbol. The icon should follow material design or iOS guidelines with a limited color palette (2-3 colors maximum). Create clean shapes with strong silhouettes that remain recognizable at small sizes. Avoid text, intricate details, and overly complex imagery.
+```
+
+#### UI Icon Set Template:
+```
+Create a consistent set of minimal UI icons for [ITEM1, ITEM2, ITEM3]. Icons should be simple, single-color (monochrome) line/solid style, uniform thickness, with clean geometric shapes. Design them to work well at small sizes (24x24px) with clear silhouettes. Ensure consistent style across all icons.
+```
+
+### Quy Trình Tối Ưu Prompt
+
+1. **Xác Định Loại Ảnh**
+   - Dựa vào yêu cầu của user, xác định loại ảnh cần tạo
+   - Hỏi user nếu không rõ ràng
+
+2. **Chọn Template Phù Hợp**
+   - Lựa chọn template dựa vào loại ảnh
+   - Thay thế phần [SUBJECT] với chủ đề cụ thể
+
+3. **Bổ Sung Chi Tiết Cụ Thể**
+   - Thêm thông tin về màu sắc (nếu cần)
+   - Thêm thông tin về phong cách (nếu cần)
+
+4. **Đơn Giản Hóa Mô Tả**
+   - Loại bỏ các chi tiết phức tạp
+   - Tập trung vào yếu tố chính
+
+5. **Thêm Từ Khóa Chuyên Biệt**
+   - Vector: "flat design", "clean outlines", "limited color palette"
+   - Icon: "minimal", "recognizable at small sizes", "clean shapes"
+
+## 🖌️ DALL-E Prompt Style
+
+Để có kết quả tốt nhất khi tạo ảnh vector và icon, nên tuân theo các quy tắc khi viết prompt:
+
+### Cấu Trúc Prompt Chung
+
+```
+[HÀNH ĐỘNG] + [PHONG CÁCH] + [CHỦ THỂ] + [CHI TIẾT BỔ SUNG] + [GIỚI HẠN KỸ THUẬT]
+```
+
+Ví dụ:
+```
+Create (hành động) a minimalist vector illustration with flat design style (phong cách) of a mountain landscape (chủ thể) with a sunrise and pine trees (chi tiết) using only simple shapes and a limited color palette, suitable for SVG conversion (giới hạn kỹ thuật)
+```
+
+### Quy Tắc Tối Ưu Cho Vector Art
+
+1. **Bắt Đầu Với Hành Động Rõ Ràng**
+   - "Create", "Design", "Generate", "Make"
+   - Chọn từ ngữ mạnh mẽ và chỉ dẫn
+
+2. **Xác Định Phong Cách**
+   - "minimalist", "flat design", "geometric", "line art"
+   - "2D vector", "clean outlined", "simple shapes"
+
+3. **Giới Hạn Màu Sắc**
+   - "limited color palette" (tốt nhất là 3-5 màu)
+   - "monochromatic with accent colors"
+   - "pastel colors" hoặc "bold colors" (tùy nhu cầu)
+
+4. **Chỉ Rõ Giới Hạn Kỹ Thuật**
+   - "suitable for SVG conversion"
+   - "no gradients", "no complex textures"
+   - "clean outlines", "no small details"
+
+5. **Từ Khóa Hiệu Quả Cho Vector**
+   - "flat design", "vector art", "geometric shapes"
+   - "simple illustration", "minimal design", "clean lines"
+   - "solid colors", "clear shapes", "scalable design"
+
+### Quy Tắc Tối Ưu Cho Icons
+
+1. **Chỉ Rõ Mục Đích Sử Dụng**
+   - "UI icon", "app icon", "website icon"
+   - "icon set for [specific purpose]"
+
+2. **Xác Định Kích Thước Và Chức Năng**
+   - "recognizable at small sizes (24x24px)"
+   - "suitable for mobile interfaces"
+   - "works well in navigation menus"
+
+3. **Giới Hạn Phong Cách**
+   - "line icon" hoặc "solid icon" hoặc "outline icon"
+   - "consistent stroke width" (cho line icons)
+   - "uniform corner radius" (cho shape consistency)
+
+4. **Tránh Các Thành Phần Không Cần Thiết**
+   - "no text", "no complex details"
+   - "avoid shadows and 3D effects"
+   - "no photorealistic elements"
+
+5. **Từ Khóa Hiệu Quả Cho Icons**
+   - "pictogram", "glyph", "symbolic icon"
+   - "material design style", "iOS style", "fluent design"
+   - "single-weight icon", "pixel-perfect", "clear silhouette"
+
+## 📂 Cấu Trúc Thư Mục
+
+- `assets/icons`: Lưu trữ các icon và logo
+- `assets/images`: Lưu trữ ảnh sử dụng trong project
+- `assets/illustrations`: Lưu trữ các vector illustrations
+
+## 💼 Thực Tiễn Tốt Nhất
+
+1. **Tối Ưu Chi Phí**
+   - Chỉ tạo ảnh khi thực sự cần thiết
+   - Sử dụng DALL-E 2 thay vì DALL-E 3 cho các bản nháp
+   - Lưu và tái sử dụng prompts hiệu quả
+
+2. **Quản Lý Tài Nguyên**
+   - Lưu trữ ảnh trong thư mục phù hợp
+   - Đặt tên file một cách mô tả và nhất quán
+   - Lưu prompt trong file text đi kèm để tham khảo sau này
+
+3. **Quy Trình Làm Việc Hiệu Quả**
+   - Phân tích ảnh có sẵn để tạo prompt cơ sở
+   - Tinh chỉnh prompt trước khi tạo ảnh chính thức
+   - Chuyển đổi và tối ưu vector sau khi tạo
+   - Kiểm tra kết quả cuối cùng trên nhiều kích thước
+
+## 🎮 Ví Dụ Sử Dụng
+
+### Tạo Vector Illustration:
+```bash
+node scripts/dalle/generate_image.js -p "Mountain landscape with lake" -v -o "assets/illustrations/mountain_landscape.png"
+```
+
+### Tạo App Icon:
+```bash
+node scripts/dalle/generate_image.js -p "Weather app" -a -o "assets/icons/weather_app_icon.png"
+```
+
+### Chuyển Đổi Ảnh Sang Vector:
+```bash
+node scripts/dalle/vectorize_image.js -i "assets/images/logo.png" -o "assets/icons/logo.svg" -c 5 -s 70
+``` 

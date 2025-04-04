@@ -1,0 +1,29 @@
+{
+  "name": "base-ai-project",
+  "version": "1.0.0",
+  "description": "Đây là base project để sử dụng với Cursor - trợ lý AI IDE mạnh mẽ. Dự án này cung cấp cấu trúc chuẩn và các rule AI được tối ưu hóa để làm việc hiệu quả với mọi loại dự án.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/babyskill/Base-AI-Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/babyskill/Base-AI-Project/issues"
+  },
+  "homepage": "https://github.com/babyskill/Base-AI-Project#readme",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "openai": "^4.90.0",
+    "potrace": "^2.1.8",
+    "sharp": "^0.33.5"
+  }
+}

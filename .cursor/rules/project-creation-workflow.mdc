@@ -1,0 +1,260 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Quy Trình Tạo Dự Án Mới
+description: Quy trình phát triển dự án mới từ ý tưởng ban đầu
+globs: "*.*"
+
+## Quy Trình Instruction-First
+- ***BẮT BUỘC*** tạo instruction (file .md) trước khi bắt đầu phát triển dự án mới
+- ***BẮT BUỘC*** brainstorm kỹ với người dùng trước khi tạo instruction
+- ***BẮT BUỘC*** đọc và hiểu instruction trước khi bắt đầu code
+- ***BẮT BUỘC*** cập nhật .code-workspace sau khi hoàn thành brainstorming
+- ***BẮT BUỘC*** tạo file MockupData.md khi dự án sử dụng bất kỳ dữ liệu giả lập nào
+- ***BẮT BUỘC*** tạo file db-schema.sql khi dự án sử dụng database
+- Không bao giờ bắt đầu code khi chưa có instruction đầy đủ
+
+## Brainstorming với Người Dùng
+- Đặt câu hỏi để hiểu rõ mục tiêu và tầm nhìn của ý tưởng
+- Chia câu hỏi thành nhiều lần hỏi, không hỏi tất cả trong cùng một lần
+- Hỏi về use cases, user stories và các tình huống sử dụng
+- Xác định đối tượng người dùng và nhu cầu của họ
+- Tìm hiểu ưu tiên và tính năng cốt lõi
+- Khám phá các ràng buộc về kỹ thuật, kinh doanh và người dùng
+- Xác định các yêu cầu chức năng và phi chức năng
+- Tóm tắt hiểu biết sau mỗi vòng hỏi đáp
+- Đề xuất những cách tiếp cận khác nhau để giải quyết vấn đề
+- Kiểm tra xác nhận hiểu biết của bạn với người dùng
+
+## Nghiên Cứu Đối Thủ Cạnh Tranh
+- ***BẮT BUỘC*** tìm kiếm và phân tích ít nhất 3 dự án tương tự trên nền tảng tương ứng
+- Với ứng dụng Android: Tìm kiếm trên Google Play Store các ứng dụng có chức năng tương tự
+- Với ứng dụng iOS: Tìm kiếm trên App Store các ứng dụng có chức năng tương tự
+- Với ứng dụng web: Tìm kiếm trên Google các website có chức năng tương tự
+- Với dự án backend: Tìm các giải pháp open-source tương tự trên GitHub
+- Phân tích điểm mạnh, điểm yếu của từng đối thủ cạnh tranh
+- Tổng hợp các tính năng phổ biến và độc đáo từ các đối thủ
+- Đánh giá reviews/feedback của người dùng về các sản phẩm tương tự
+- Xác định cơ hội để tạo điểm khác biệt và lợi thế cạnh tranh
+- Tổng hợp các insights từ nghiên cứu đối thủ vào quá trình brainstorming
+- Đề xuất các tính năng dựa trên phân tích đối thủ cạnh tranh
+- Cập nhật nghiên cứu định kỳ để theo dõi xu hướng thị trường
+
+## Cấu Hình Workspace
+- Sau khi hoàn thành brainstorming, cập nhật file .code-workspace để định danh dự án
+- Chọn màu sắc workspace và emoji phù hợp để nhanh chóng nhận diện dự án
+- Cập nhật title với emoji phản ánh chủ đề hoặc mục đích của dự án
+- Danh sách emoji gợi ý theo loại dự án:
+  * 🤖 - AI/ML project
+  * 🌦️ - Weather app
+  * 📱 - Mobile app
+  * 🖥️ - Desktop app
+  * 🌐 - Web app
+  * 🎮 - Game
+  * 📊 - Data analytics
+  * 🔒 - Security app
+  * 📝 - Note taking/Document
+  * 🛒 - E-commerce
+  * 📷 - Photo/Video
+  * 🎵 - Music/Audio
+  * 💬 - Chat/Communication
+  * 🗂️ - File management
+  * 🧠 - Education
+- Cấu hình extensions phù hợp với tech stack để đảm bảo nhất quán giữa các thành viên
+- Cấu hình màu sắc workspace để dễ dàng phân biệt khi làm việc với nhiều dự án
+- Màu sắc có thể liên quan đến chủ đề hoặc ngẫu nhiên để dễ phân biệt
+- Ví dụ cấu hình:
+  ```json
+  {
+    "folders": [{ "name": "Project-Name", "path": "." }],
+    "settings": {
+      "window.title": "🤖 ${rootName} | ${activeEditorShort}",
+      "workbench.colorCustomizations": {
+        "activityBar.background": "#4B0082",
+        "titleBar.activeBackground": "#4B0082",
+        "titleBar.activeForeground": "#FFFFFF"
+      }
+    }
+  }
+  ```
+
+## Tạo Instruction
+- Tạo file instruction trong thư mục instructions/ hoặc thư mục tương ứng
+- Sử dụng định dạng [TenTinhNang]_Instruction.md
+- Tổng hợp tất cả thông tin từ quá trình brainstorm vào instruction
+- Bao gồm kết quả nghiên cứu đối thủ cạnh tranh trong phần phân tích thị trường
+- Mô tả rõ mục tiêu, yêu cầu, và scope của tính năng
+- Xác định các task cụ thể và đánh dấu trạng thái (✅, ⏳, ❌)
+- Định nghĩa ràng buộc và yêu cầu ngoài biên
+- Xác định tiêu chí hoàn thành cho từng task và toàn bộ tính năng
+- Liên kết đến các tài liệu liên quan khác nếu cần
+
+## Phân Cấp Instruction
+- ***BẮT BUỘC*** tạo instruction tổng quan (outline) cho toàn bộ dự án trước tiên
+- ***BẮT BUỘC*** tạo các instruction chi tiết riêng biệt cho từng module/tính năng
+- Đặt tên instruction chi tiết theo cấu trúc: `[TênDựÁn]_[TênModule]_Instruction.md`
+- Trong instruction tổng quan, liệt kê tất cả các module/tính năng cần phát triển
+- Tạo liên kết từ instruction tổng quan đến các instruction chi tiết
+- Cập nhật instruction tổng quan mỗi khi thêm hoặc thay đổi module/tính năng
+- Đảm bảo mỗi instruction chi tiết tham chiếu ngược lại instruction tổng quan
+- Instruction chi tiết phải đủ chi tiết để có thể triển khai độc lập
+- Cấu trúc thư mục instruction nên phản ánh cấu trúc của dự án
+
+## Instruction Chi Tiết Cho Giao Diện
+- ***BẮT BUỘC*** brainstorm lại với người dùng về giao diện họ mong muốn
+- Tạo file instruction riêng cho giao diện với cấu trúc: `[TênDựÁn]_UI_Instruction.md`
+- Thu thập tham khảo hình ảnh, mockups, hoặc wireframes từ người dùng
+- Liệt kê chi tiết các màn hình/components cần được phát triển
+- Mô tả flow chuyển tiếp giữa các màn hình
+- Xác định:
+  * Layout tổng thể (responsive breakpoints nếu cần)
+  * Color scheme và typography
+  * Components chính và cách chúng tương tác
+  * Animations và transitions
+  * States khác nhau của UI (loading, error, empty states)
+  * Responsive behavior (mobile, tablet, desktop)
+- Tạo sitemap hoặc flow diagram cho các ứng dụng phức tạp
+- Sử dụng danh sách các câu hỏi gợi ý để brainstorm về UI:
+  * "Bạn có thể cung cấp ví dụ về UI mà bạn thích không?"
+  * "Màu sắc chủ đạo bạn muốn sử dụng là gì?"
+  * "Bạn ưu tiên thiết kế đơn giản hay phức tạp?"
+  * "Có flow hoặc tương tác cụ thể nào bạn muốn làm nổi bật không?"
+  * "Đối tượng người dùng chính của ứng dụng là ai?"
+- Khi thu thập feedback về UI, tập trung vào:
+  * Mục tiêu của người dùng trên từng màn hình
+  * Thông tin cần hiển thị và mức độ ưu tiên
+  * Các tác vụ phổ biến người dùng cần thực hiện
+  * Những pain points trong UI hiện tại (nếu có)
+- Đính kèm references, mockups, screenshots vào phần phụ lục của instruction
+
+## Quản Lý Database
+- ***BẮT BUỘC*** tạo file db-schema.sql tại thư mục gốc của dự án
+- ***BẮT BUỘC*** thiết kế cấu trúc database trước khi bắt đầu code
+- ***BẮT BUỘC*** cập nhật db-schema.sql mỗi khi thay đổi cấu trúc database
+- ***BẮT BUỘC*** kiểm tra db-schema.sql trước khi tạo hoặc sử dụng database mới
+- ***BẮT BUỘC*** ghi rõ mục đích của từng database trong db-schema.sql
+- ***BẮT BUỘC*** theo dõi lịch sử thay đổi của database trong file db-schema.sql
+- Thiết kế database theo các best practices của loại database sử dụng
+- Tối ưu hóa cấu trúc database ngay từ đầu để tránh refactoring lớn sau này
+- Tổ chức cấu trúc db-schema.sql theo dạng:
+  ```sql
+  -- DATABASE: <tên_database>
+  -- MỤC ĐÍCH: <mô tả ngắn về mục đích sử dụng>
+  -- NGÀY TẠO: <ngày tạo ban đầu>
+  -- NGƯỜI TẠO: <người tạo ban đầu>
+  -- LỊCH SỬ CẬP NHẬT:
+  -- <ngày> - <người cập nhật> - <mô tả ngắn về thay đổi>
+
+  CREATE DATABASE IF NOT EXISTS <tên_database>;
+  USE <tên_database>;
+
+  -- Định nghĩa bảng và cấu trúc
+  -- ...
+
+  -- Kết thúc định nghĩa database này
+  -- ----------------------------------------
+  ```
+- Tham khảo thêm tại file `instructions/database-management.md` cho hướng dẫn chi tiết
+
+## Supabase và MCP Trong Dự Án Mới
+- ***BẮT BUỘC*** cài đặt Supabase MCP khi làm việc với bất kỳ dự án Supabase nào
+  ```bash
+  npm install -g @supabase/mcp-server-postgrest
+  ```
+- ***BẮT BUỘC*** tạo file `.env` chứa đầy đủ cấu hình kết nối Supabase:
+  ```
+  SUPABASE_URL=https://your-project-url.supabase.co
+  SUPABASE_ANON_KEY=your-anon-key
+  SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+  ```
+- ***BẮT BUỘC*** tạo file `example.env` làm mẫu cho người dùng
+- ***BẮT BUỘC*** thêm script khởi động MCP vào `package.json`:
+  ```json
+  "scripts": {
+    "mcp": "mcp-server-postgrest --apiUrl=$SUPABASE_URL/rest/v1 --apiKey=$SUPABASE_ANON_KEY --schema=public"
+  }
+  ```
+- ***BẮT BUỘC*** kiểm tra cấu hình `.env` trước khi tiếp tục làm việc
+- ***BẮT BUỘC*** sử dụng MCP để kiểm tra mọi thay đổi liên quan đến database
+- ***BẮT BUỘC*** tuân thủ quy trình làm việc với MCP:
+  1. Khởi động MCP server trước khi làm việc với database
+  2. Soạn thảo và kiểm tra queries qua MCP
+  3. Tối ưu hóa dựa trên feedback từ MCP
+  4. Chỉ áp dụng thay đổi vào Supabase sau khi đã kiểm tra kỹ
+- ***KHUYẾN NGHỊ*** tạo types từ schema database khi sử dụng TypeScript
+- ***KHUYẾN NGHỊ*** thiết lập CI/CD pipeline kết hợp với MCP
+- Tham khảo thêm tại file `.cursor/rules/supabase-mcp-workflow.mdc` cho hướng dẫn chi tiết
+
+## Quy Trình Thực Hiện
+1. Brainstorm với người dùng qua nhiều vòng hỏi đáp
+2. Nghiên cứu và phân tích đối thủ cạnh tranh
+3. Phân tích yêu cầu từ user
+4. Rà soát cấu trúc project
+5. Tạo instruction đầy đủ
+6. Cập nhật .code-workspace với màu sắc và emoji phù hợp
+7. Tạo file MockupData.md nếu dự án sử dụng dữ liệu giả lập
+8. Tạo file db-schema.sql nếu dự án sử dụng database
+9. Xác nhận instruction đã hoàn thiện
+10. Tuân thủ các task trong instruction theo thứ tự
+11. Cập nhật trạng thái task khi hoàn thành
+12. Kiểm tra tất cả tiêu chí hoàn thành
+13. Tổng kết khi hoàn thiện tính năng
+
+## Quản Lý Instruction Files
+- Giữ instruction files trong Git version control
+- Cập nhật instruction khi có thay đổi
+- Đảm bảo mỗi tính năng có ít nhất một instruction file
+- Sử dụng instruction files như documentation cho dự án
+- Tham khảo instruction cũ khi phát triển tính năng mới tương tự
+
+## Quản Lý Resource
+- ***BẮT BUỘC*** tải các Cursor Rules mới về thư mục .cursor/rules trong quá trình setup dự án
+- ***BẮT BUỘC*** tạo thư mục assets/icons để lưu trữ các icon được sử dụng trong dự án
+- ***BẮT BUỘC*** sử dụng Icon Library API để tìm kiếm và tải về các icon cần thiết
+- ***BẮT BUỘC*** cập nhật file `.gitignore` để loại trừ các file tạm trong quá trình làm việc với resource
+- ***KHUYẾN NGHỊ*** tạo file README.md trong thư mục assets/icons để mô tả nguồn gốc và license của icon
+- Sử dụng API endpoint `/icon-sets` để xem danh sách các bộ icon có sẵn
+- Sử dụng API endpoint `/search` để tìm kiếm icon theo từ khóa cụ thể
+- Sử dụng API endpoint `/suggest` để nhận đề xuất icon dựa trên ngữ cảnh
+- Đặt tên file icon theo convention: `[tên-icon]_[kích-thước].[định-dạng]`
+- Tạo thư mục con theo loại icon nếu số lượng icon lớn (ví dụ: weather/, ui/, social/)
+- Với các icon SVG, cân nhắc sử dụng icon components để đảm bảo tính nhất quán
+- Luôn lưu thông tin về license và nguồn gốc của icon trong file README.md
+- Quy trình tải và sử dụng icon:
+  1. Xác định nhu cầu icon từ instruction
+  2. Tìm kiếm icon phù hợp qua Icon Library API
+  3. Tải icon về thư mục assets/icons
+  4. Ghi lại thông tin về icon trong README.md
+  5. Sử dụng icon trong code với đường dẫn tương đối
+
+## Quy Trình Tải Và Sử Dụng Rules
+- ***BẮT BUỘC*** kiểm tra các rules sẵn có trong dự án thông qua API endpoint `/rules`
+- ***BẮT BUỘC*** tạo thư mục `.cursor/rules` nếu chưa tồn tại
+- ***BẮT BUỘC*** tải các rules phù hợp với loại dự án về thư mục `.cursor/rules`
+- ***BẮT BUỘC*** cập nhật rules khi có phiên bản mới
+- ***KHUYẾN NGHỊ*** tạo file `.cursorrc` để cấu hình các rules được áp dụng tự động
+- Quy trình tải và sử dụng rules:
+  1. Kiểm tra danh sách rules có sẵn thông qua API
+  2. Xác định các rules phù hợp với loại dự án
+  3. Tải rules về thư mục `.cursor/rules`
+  4. Cấu hình file `.cursorrc` để xác định rules áp dụng tự động
+  5. Thực hiện đồng bộ rules giữa local và server nếu cần
+- Các lệnh đồng bộ hóa rules:
+  ```bash
+  # Tải rules từ local lên server
+  npm run rules:upload
+  
+  # Tải rules từ server về local
+  npm run rules:download
+  
+  # Đồng bộ hai chiều
+  npm run rules:sync
+  ```
+- Khi cập nhật rules, ghi lại trong Changelog.md với thông tin phiên bản
+- Áp dụng các rule mới nhất để đảm bảo chất lượng và tính nhất quán của dự án
+
+@file ../Instruction.md
+@file ../Project.md
+@file ../MockupData.md 

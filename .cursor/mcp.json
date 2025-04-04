@@ -1,0 +1,48 @@
+{
+  "mcpServers": {
+    "supabase-postgrest": {
+      "command": "npx",
+      "args": ["-y", "@supabase/mcp-server-postgrest", "--apiUrl", "https://aggkdikmvlbtaumbbszf.supabase.co/rest/v1", "--apiKey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnZ2tkaWttdmxidGF1bWJic3pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE1NzYyOTgsImV4cCI6MjA1NzE1MjI5OH0.rnb2bxBO8Xgj0w_szWJMxiVAw0jT9wrbJYhPocxyXC4", "--schema", "public"],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "description": "Supabase PostgREST MCP Server - Truy vấn và quản lý dữ liệu thông qua REST API",
+      "environmentMatch": ["development", "dev", "local"],
+      "enabled": "${NODE_ENV !== 'production'}",
+      "capabilities": {
+        "tools": {
+          "postgrestRequest": {
+            "description": "Thực hiện HTTP request đến Supabase PostgREST API",
+            "parameters": {
+              "method": {
+                "type": "string",
+                "description": "Phương thức HTTP (GET, POST, PATCH, DELETE)"
+              },
+              "path": {
+                "type": "string",
+                "description": "Đường dẫn API (vd: /courses?id=eq.1)"
+              },
+              "body": {
+                "type": "object",
+                "description": "Dữ liệu gửi lên cho POST/PATCH requests"
+              }
+            }
+          },
+          "sqlToRest": {
+            "description": "Chuyển đổi câu lệnh SQL thành cú pháp PostgREST tương ứng",
+            "parameters": {
+              "sql": {
+                "type": "string",
+                "description": "Câu lệnh SQL cần chuyển đổi"
+              }
+            }
+          }
+        }
+      }
+    },
+    "MCP Installer": {
+      "command": "cursor-mcp-installer-free",
+      "type": "stdio"
+    }
+  }
+} 

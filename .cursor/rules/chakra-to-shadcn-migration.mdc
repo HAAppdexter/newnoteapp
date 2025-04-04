@@ -1,0 +1,361 @@
+---
+description: Hướng dẫn migration từ Chakra UI sang shadcn/ui
+globs: "*.js,*.jsx,*.ts,*.tsx"
+alwaysApply: false
+---
+# Hướng Dẫn Migration từ Chakra UI sang shadcn/ui
+description: Hướng dẫn chi tiết để migration từ Chakra UI sang shadcn/ui
+globs: "*.js,*.jsx,*.ts,*.tsx"
+
+## Giới Thiệu
+- File này cung cấp hướng dẫn từng bước để migration một dự án từ Chakra UI sang shadcn/ui
+- Thiết kế cho quá trình migration dần dần, không cần refactor toàn bộ cùng lúc
+- Có thể dùng cả hai framework trong thời gian migration, với chiến lược phân tách rõ ràng
+
+## Phân Tích Trước Migration
+1. Phân tích components hiện có
+   - Liệt kê tất cả Chakra UI components đang sử dụng
+   - Tìm các components tương đương trong shadcn/ui
+   - Xác định các custom components cần phải tự implement lại
+
+2. Phân loại các components theo mức độ phức tạp:
+   - Đơn giản: Button, Input, Text, Box...
+   - Trung bình: Menu, Modal, Tabs...
+   - Phức tạp: Calendar, DataGrid, complex forms...
+
+3. Mapping components giữa hai thư viện:
+
+| Chakra UI | shadcn/ui | Độ phức tạp | Ghi chú |
+|-----------|-----------|-------------|---------|
+| Button | Button | Thấp | API khác nhau, variant cần map lại |
+| Input | Input | Thấp | Shadcn yêu cầu form context cho validation |
+| Checkbox | Checkbox | Thấp | API tương tự |
+| Radio | RadioGroup | Thấp | Shadcn cần RadioGroup.Item |
+| Select | Select | Trung bình | API hoàn toàn khác nhau |
+| Modal | Dialog | Trung bình | Shadcn dùng Dialog & DialogPortal |
+| Tabs | Tabs | Trung bình | Structure tương tự |
+| Drawer | Sheet | Trung bình | Cần custom thêm bằng @/components/ui/sheet |
+| Menu | DropdownMenu | Trung bình | Structure nested hơn |
+| Toast | Toast | Cao | Cần sử dụng useToast & Toaster |
+| Table | Table | Cao | API khác biệt lớn |
+| Form control | Form | Cao | Shadcn yêu cầu react-hook-form |
+
+## Quy Trình Migration
+
+### Giai Đoạn 1: Cài Đặt Shadcn/UI
+1. Cài đặt dependencies:
+   ```bash
+   npm install tailwindcss postcss autoprefixer
+   npx tailwindcss init -p
+   npx shadcn-ui@latest init
+   ```
+
+2. Cấu hình Tailwind CSS:
+   ```js
+   // tailwind.config.js
+   /** @type {import('tailwindcss').Config} */
+   module.exports = {
+     darkMode: ["class"],
+     content: [
+       './pages/**/*.{ts,tsx}',
+       './components/**/*.{ts,tsx}',
+       './app/**/*.{ts,tsx}',
+       './src/**/*.{ts,tsx}',
+     ],
+     // Thêm shadcn theme extension
+     theme: {
+       container: {
+         center: true,
+         padding: "2rem",
+         screens: {
+           "2xl": "1400px",
+         },
+       },
+       extend: {
+         // Thêm các variables cần thiết cho shadcn
+       },
+     },
+     plugins: [require("tailwindcss-animate")],
+   }
+   ```
+
+3. Tạo utils.ts:
+   ```ts
+   // lib/utils.ts
+   import { type ClassValue, clsx } from "clsx"
+   import { twMerge } from "tailwind-merge"
+   
+   export function cn(...inputs: ClassValue[]) {
+     return twMerge(clsx(inputs))
+   }
+   ```
+
+4. Tạo thư mục cho shadcn components:
+   ```bash
+   mkdir -p components/ui
+   ```
+
+### Giai Đoạn 2: Installation Components
+1. Cài đặt các components cơ bản:
+   ```bash
+   npx shadcn-ui@latest add button
+   npx shadcn-ui@latest add input
+   npx shadcn-ui@latest add form
+   # Thêm các components khác tùy nhu cầu
+   ```
+
+2. Tạo các custom components khi cần:
+   - Dựa trên primitives có sẵn
+   - Sử dụng styled-system của shadcn
+   - Bảo toàn API gần giống Chakra nếu cần thiết
+
+### Giai Đoạn 3: Isolation & Adapter Pattern
+
+1. Tạo isolation containers:
+   ```tsx
+   // components/ui/chakra-scope.tsx
+   import { ChakraProvider } from "@chakra-ui/react";
+   
+   export const ChakraScope = ({ children }) => (
+     <ChakraProvider>
+       <div className="chakra-scope">
+         {children}
+       </div>
+     </ChakraProvider>
+   );
+   
+   // components/ui/shadcn-scope.tsx
+   export const ShadcnScope = ({ children }) => (
+     <div className="shadcn-scope">
+       {children}
+     </div>
+   );
+   ```
+
+2. Thêm CSS isolation:
+   ```css
+   /* styles/globals.css */
+   .chakra-scope {
+     isolation: isolate;
+   }
+   
+   .shadcn-scope {
+     /* Reset any Chakra styles */
+   }
+   ```
+
+3. Tạo adapter components:
+   ```tsx
+   // components/ui/button-adapter.tsx
+   import { Button as ChakraButton } from "@chakra-ui/react";
+   import { Button as ShadcnButton } from "@/components/ui/button";
+   
+   type ButtonAdapterProps = {
+     useChakra?: boolean;
+     variant?: string;
+     [key: string]: any;
+   };
+   
+   // Map Chakra variants sang Shadcn variants
+   const variantMap = {
+     solid: "default",
+     outline: "outline",
+     ghost: "ghost",
+     link: "link",
+     // Add more mappings
+   };
+   
+   export const ButtonAdapter = ({ 
+     useChakra = false, 
+     variant = "default",
+     ...props 
+   }: ButtonAdapterProps) => {
+     if (useChakra) {
+       return <ChakraButton variant={variant} {...props} />;
+     }
+     
+     // Map variant nếu cần
+     const mappedVariant = variantMap[variant] || variant;
+     
+     return <ShadcnButton variant={mappedVariant} {...props} />;
+   };
+   ```
+
+### Giai Đoạn 4: Feature Flagging
+1. Setup feature flags:
+   ```tsx
+   // lib/features.ts
+   export const FEATURES = {
+     USE_SHADCN: process.env.NEXT_PUBLIC_USE_SHADCN === 'true',
+     USE_SHADCN_FORMS: process.env.NEXT_PUBLIC_USE_SHADCN_FORMS === 'true',
+     // Thêm feature flags cụ thể cho từng trang/component
+   };
+   
+   // Sử dụng trong component
+   import { FEATURES } from "@/lib/features";
+   
+   const MyComponent = () => {
+     return FEATURES.USE_SHADCN 
+       ? <ShadcnButton>Click me</ShadcnButton>
+       : <ChakraButton>Click me</ChakraButton>;
+   };
+   ```
+
+### Giai Đoạn 5: Lộ Trình Migration Theo Pages
+1. Bắt đầu với các pages đơn giản nhất:
+   - Các trang ít phức tạp, ít components
+   - Các trang ít critical (low traffic, internal pages)
+
+2. Quy trình cho mỗi page:
+   - Migration toàn bộ page sang shadcn/ui
+   - Test kỹ lưỡng trước khi đẩy lên production
+   - Sử dụng feature flags để có thể rollback dễ dàng
+
+3. Migration order:
+   - Static pages trước
+   - Form-heavy pages sau
+   - Complex interactive pages cuối cùng
+
+### Giai Đoạn 6: Theme Migration
+1. Tạo shadcn theme dựa trên Chakra theme:
+   ```css
+   /* global.css */
+   @tailwind base;
+   @tailwind components;
+   @tailwind utilities;
+   
+   @layer base {
+     :root {
+       --background: hsl(0 0% 100%);
+       --foreground: hsl(222.2, 84%, 4.9%);
+       /* Map từ Chakra color scheme sang shadcn variables */
+       --primary: hsl(221.2, 83.2%, 53.3%); /* Chakra blue.500 */
+       --primary-foreground: hsl(210, 40%, 98%);
+       /* Continue mapping other colors */
+     }
+   
+     .dark {
+       --background: hsl(222.2, 84%, 4.9%);
+       --foreground: hsl(210, 40%, 98%);
+       /* Dark mode colors */
+     }
+   }
+   ```
+
+2. Custom component variants để match Chakra look & feel:
+   ```tsx
+   // components/ui/button.tsx
+   // Customize shadcn defaults để khớp với Chakra design
+   // Ví dụ: Thêm rounded corners, special focus states, etc.
+   ```
+
+### Giai Đoạn 7: Testing & Validation
+1. Test approach:
+   - Visual regression testing
+   - Unit tests cho các adapter components
+   - Integration tests cho các form và interactive elements
+   - Cross-browser testing
+   - Mobile responsiveness testing
+
+2. Validation checklist:
+   - Tất cả interactivity hoạt động như trước
+   - Accessibility không bị ảnh hưởng
+   - Performance metrics tương đương hoặc tốt hơn
+   - Không regression trong business logic
+
+## Component-Specific Migration Guide
+
+### Forms
+Forms migration là phức tạp nhất vì shadcn/ui sử dụng react-hook-form:
+
+```tsx
+// Chakra Form
+<FormControl>
+  <FormLabel>Email</FormLabel>
+  <Input value={email} onChange={e => setEmail(e.target.value)} />
+  <FormHelperText>We'll never share your email.</FormHelperText>
+</FormControl>
+
+// shadcn/ui Form
+<Form {...form}>
+  <form onSubmit={form.handleSubmit(onSubmit)}>
+    <FormField
+      control={form.control}
+      name="email"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Email</FormLabel>
+          <FormControl>
+            <Input {...field} />
+          </FormControl>
+          <FormDescription>We'll never share your email.</FormDescription>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+    <Button type="submit">Submit</Button>
+  </form>
+</Form>
+```
+
+### Modals
+```tsx
+// Chakra Modal
+<Button onClick={onOpen}>Open Modal</Button>
+<Modal isOpen={isOpen} onClose={onClose}>
+  <ModalOverlay />
+  <ModalContent>
+    <ModalHeader>Modal Title</ModalHeader>
+    <ModalCloseButton />
+    <ModalBody>
+      <Text>Modal content</Text>
+    </ModalBody>
+    <ModalFooter>
+      <Button onClick={onClose}>Close</Button>
+    </ModalFooter>
+  </ModalContent>
+</Modal>
+
+// shadcn/ui Dialog
+<Dialog open={open} onOpenChange={setOpen}>
+  <DialogTrigger asChild>
+    <Button>Open Dialog</Button>
+  </DialogTrigger>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Dialog Title</DialogTitle>
+      <DialogDescription>Dialog description</DialogDescription>
+    </DialogHeader>
+    <div>Dialog content</div>
+    <DialogFooter>
+      <Button onClick={() => setOpen(false)}>Close</Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+### Tables
+Với tables, nên xem xét sử dụng TanStack Table với shadcn/ui Table components:
+
+```tsx
+// Xem hướng dẫn chi tiết TanStack Table tại: 
+// https://ui.shadcn.com/docs/components/data-table
+```
+
+## Checklist Before Final Migration
+- Đã migration tất cả pages và components
+- Đã test kỹ lưỡng mọi functionality
+- Đã verify accessibility
+- Đã kiểm tra performance metrics
+- Đã xóa tất cả unused Chakra dependencies
+- Đã xóa tất cả Chakra imports và config
+- Đã cập nhật documentation
+
+## Tài Nguyên Bổ Sung
+- [Shadcn UI Documentation](https://ui.shadcn.com/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [React Hook Form Documentation](https://react-hook-form.com/)
+- [Zod Documentation](https://zod.dev/)
+
+@file ../components/ui/button.tsx
+@file ../components/ui/input.tsx 
