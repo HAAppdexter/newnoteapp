@@ -315,16 +315,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildThemeSelector() {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
+        String themeText;
+        switch (themeProvider.themeMode) {
+          case ThemeMode.light:
+            themeText = 'Sáng';
+            break;
+          case ThemeMode.dark:
+            themeText = 'Tối';
+            break;
+          case ThemeMode.system:
+            themeText = 'Tự động (theo thiết bị)';
+            break;
+        }
+        
         return ListTile(
           title: const Text('Chủ đề'),
-          subtitle: Text(
+          subtitle: Text(themeText),
+          leading: Icon(
             themeProvider.themeMode == ThemeMode.light
-                ? 'Sáng'
+                ? Icons.light_mode
                 : themeProvider.themeMode == ThemeMode.dark
-                    ? 'Tối'
-                    : 'Tự động',
+                    ? Icons.dark_mode
+                    : Icons.brightness_auto,
           ),
-          leading: const Icon(Icons.palette),
           onTap: () {
             showDialog(
               context: context,
@@ -353,7 +366,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         },
                       ),
                       ListTile(
-                        title: const Text('Tự động'),
+                        title: const Text('Tự động (theo thiết bị)'),
+                        subtitle: const Text('Thay đổi theo chế độ của điện thoại'),
                         leading: const Icon(Icons.brightness_auto),
                         selected: themeProvider.themeMode == ThemeMode.system,
                         onTap: () {

@@ -6,12 +6,26 @@ class ThemeProvider extends ChangeNotifier {
   late SettingsService _settingsService;
   late ThemeMode _themeMode;
   late Color _accentColor;
+  Brightness? _lastBrightness;
 
   ThemeProvider() {
     _settingsService = SettingsService();
     _themeMode = ThemeMode.system;
     _accentColor = Colors.blue;
     _loadSettings();
+    _setupBrightnessListener();
+  }
+
+  // Thiết lập theo dõi thay đổi brightness của hệ thống
+  void _setupBrightnessListener() {
+    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = () {
+      final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      if (_lastBrightness != brightness && _themeMode == ThemeMode.system) {
+        _lastBrightness = brightness;
+        notifyListeners(); // Thông báo UI cập nhật khi brightness thay đổi
+      }
+    };
+    _lastBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
   }
 
   // Getter cho theme mode
@@ -65,5 +79,12 @@ class ThemeProvider extends ChangeNotifier {
     _accentColor = _settingsService.getAccentColor();
     
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    // Hủy listener khi provider bị dispose
+    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = null;
+    super.dispose();
   }
 } 

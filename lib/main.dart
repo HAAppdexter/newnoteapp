@@ -59,15 +59,33 @@ class AppContent extends StatefulWidget {
   AppContentState createState() => AppContentState();
 }
 
-class AppContentState extends State<AppContent> {
+class AppContentState extends State<AppContent> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    
+    // Đăng ký observer để lắng nghe các thay đổi về độ sáng hệ thống
+    WidgetsBinding.instance.addObserver(this);
     
     // Khởi tạo AdProvider
     Future.delayed(Duration.zero, () {
       context.read<AdProvider>().initialize();
     });
+  }
+  
+  @override
+  void dispose() {
+    // Hủy đăng ký observer khi widget bị dispose
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+  
+  @override
+  void didChangePlatformBrightness() {
+    // Có thể cập nhật UI khi hệ thống thay đổi độ sáng
+    if (mounted) {
+      setState(() {});
+    }
   }
   
   @override
