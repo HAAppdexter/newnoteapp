@@ -36,24 +36,28 @@ class AdProvider extends ChangeNotifier {
 
   // Khởi tạo AdMob
   Future<void> initialize() async {
-    if (_isInitialized) return;
-    
-    await _adMobService.initialize();
-    _isInitialized = true;
-    
-    // Tải quảng cáo banner
-    _loadBannerAd();
-    
-    // Tải trước các quảng cáo
-    _adMobService.preloadAds();
+    try {
+      if (_isInitialized) return;
+      
+      await _adMobService.initialize();
+      _isInitialized = true;
+      
+      // Tải quảng cáo banner
+      _loadBannerAd();
+      
+      // Tải trước các quảng cáo
+      _adMobService.preloadAds();
+    } catch (e) {
+      debugPrint('AdProvider initialization error: $e');
+    }
   }
 
   // Tải banner ad
   Future<void> _loadBannerAd() async {
-    if (_isLoadingBanner) return;
-    _isLoadingBanner = true;
-    
     try {
+      if (_isLoadingBanner) return;
+      _isLoadingBanner = true;
+      
       // Dispose quảng cáo cũ nếu có
       if (_bannerAd != null) {
         await _bannerAd!.dispose();
@@ -201,12 +205,21 @@ class AdProvider extends ChangeNotifier {
 
   // Hiển thị quảng cáo có thưởng
   Future<bool> showRewardedAd() async {
-    return await _adMobService.showRewardedAd();
+    try {
+      return await _adMobService.showRewardedAd();
+    } catch (e) {
+      debugPrint('Error showing rewarded ad: $e');
+      return false;
+    }
   }
 
   // Theo dõi hành động người dùng
   Future<void> trackUserAction() async {
-    await _adMobService.trackUserAction();
+    try {
+      await _adMobService.trackUserAction();
+    } catch (e) {
+      debugPrint('Error tracking user action: $e');
+    }
   }
 
   // Giải phóng tài nguyên

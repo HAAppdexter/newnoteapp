@@ -12,8 +12,22 @@ import 'package:newnoteapp/providers/ad_provider.dart';
 import 'package:newnoteapp/screens/home_screen.dart';
 
 // Khởi tạo các futures ở cấp module để tái sử dụng
-final Future<void> _initAdMob = MobileAds.instance.initialize();
-late Future<void> _initFirebase;
+Future<void> _initAdMob() async {
+  try {
+    await MobileAds.instance.initialize();
+  } catch (e) {
+    debugPrint('AdMob initialization failed: $e');
+  }
+}
+
+Future<void> _initFirebase() async {
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase initialization failed: $e');
+    // Cho phép ứng dụng tiếp tục mà không cần Firebase
+  }
+}
 
 // Khởi chạy ứng dụng với các thiết lập cần thiết
 Future<void> main() async {
@@ -25,13 +39,6 @@ Future<void> main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
-  // Khởi tạo Firebase bất đồng bộ và không chặn luồng chính
-  _initFirebase = Firebase.initializeApp().catchError((e) {
-    debugPrint('Firebase initialization failed: $e');
-    // Cho phép ứng dụng tiếp tục mà không cần Firebase
-    return Future.value();
-  });
   
   // Chạy ứng dụng ngay lập tức, không chờ các services khởi tạo xong
   runApp(const NoteApp());
@@ -95,21 +102,25 @@ class AppContentState extends State<AppContent> with WidgetsBindingObserver {
   
   // Khởi tạo các services tuần tự theo thứ tự ưu tiên
   Future<void> _initializeServices() async {
-    // Khởi tạo theme provider trước
-    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-    themeProvider.initialize();
-    
-    // Đợi AdMob khởi tạo xong - ưu tiên thấp, có thể tải sau
-    await _initAdMob;
-    
-    // Chỉ khởi tạo AdProvider khi widget đã gắn vào tree
-    if (mounted) {
-      final adProvider = Provider.of<AdProvider>(context, listen: false);
-      adProvider.initialize();
+    try {
+      // Khởi tạo theme provider trước
+      final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+      await themeProvider.initialize();
+      
+      // Đợi AdMob khởi tạo xong - ưu tiên thấp, có thể tải sau
+      await _initAdMob();
+      
+      // Chỉ khởi tạo AdProvider khi widget đã gắn vào tree
+      if (mounted) {
+        final adProvider = Provider.of<AdProvider>(context, listen: false);
+        await adProvider.initialize();
+      }
+      
+      // Đợi Firebase khởi tạo xong - ưu tiên thấp nhất
+      await _initFirebase();
+    } catch (e) {
+      debugPrint('Error initializing services: $e');
     }
-    
-    // Đợi Firebase khởi tạo xong - ưu tiên thấp nhất
-    await _initFirebase;
   }
   
   @override

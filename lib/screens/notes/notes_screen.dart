@@ -78,10 +78,13 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
       }
     } catch (e) {
       print('Error loading notes: $e');
+      // Không hiển thị snackbar để tránh quá nhiều thông báo lỗi
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
   
