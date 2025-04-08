@@ -395,20 +395,34 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
     
     return Scaffold(
       appBar: AppBar(
-        title: _isSearching
-          ? TextField(
-              controller: _searchController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Tìm kiếm ghi chú...',
-                border: InputBorder.none,
-              ),
-              onChanged: (query) {
-                final noteProvider = Provider.of<NoteProvider>(context, listen: false);
-                noteProvider.searchNotes(query);
-              },
-            )
-          : const Text('Notes', style: TextStyle(fontSize: 28)),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            // You can implement drawer or menu functionality here
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Menu pressed')),
+            );
+          },
+        ),
+        leadingWidth: 40, // Make the leading area smaller
+        titleSpacing: 0, // Reduce default spacing between leading and title
+        title: Padding(
+          padding: const EdgeInsets.only(left: 10), // Add 10dp padding to the left of the title
+          child: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Tìm kiếm ghi chú...',
+                  border: InputBorder.none,
+                ),
+                onChanged: (query) {
+                  final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+                  noteProvider.searchNotes(query);
+                },
+              )
+            : const Text('Notes', style: TextStyle(fontSize: 22)),
+        ),
         actions: [
           IconButton(
             icon: Icon(_isSearching ? Icons.close : Icons.search),
