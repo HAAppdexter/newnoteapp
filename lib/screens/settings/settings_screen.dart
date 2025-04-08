@@ -479,7 +479,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: const Text('Danh mục mặc định'),
           subtitle: FutureBuilder<Category?>(
             future: defaultCategoryId != null
-                ? noteProvider.noteService.categoryRepository.getById(defaultCategoryId)
+                ? noteProvider.noteService?.categoryRepository.getById(defaultCategoryId)
                 : null,
             builder: (context, snapshot) {
               if (defaultCategoryId == null || !snapshot.hasData) {

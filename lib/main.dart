@@ -10,21 +10,35 @@ import 'package:newnoteapp/providers/settings_provider.dart';
 import 'package:newnoteapp/providers/security_provider.dart';
 import 'package:newnoteapp/providers/ad_provider.dart';
 import 'package:newnoteapp/screens/home_screen.dart';
+import 'package:newnoteapp/themes/app_theme.dart';
 
 // Khởi tạo các futures ở cấp module để tái sử dụng
 Future<void> _initAdMob() async {
   try {
     await MobileAds.instance.initialize();
+    debugPrint('AdMob initialized successfully');
   } catch (e) {
     debugPrint('AdMob initialization failed: $e');
   }
 }
 
+// Biến để theo dõi trạng thái Firebase
+bool isFirebaseInitialized = false;
+
 Future<void> _initFirebase() async {
   try {
+    debugPrint('Starting Firebase initialization...');
     await Firebase.initializeApp();
+    isFirebaseInitialized = true;
+    debugPrint('Firebase initialized successfully');
   } catch (e) {
+    isFirebaseInitialized = false;
     debugPrint('Firebase initialization failed: $e');
+    // Log chi tiết lỗi để dễ dàng debug
+    if (e is FirebaseException) {
+      debugPrint('Firebase error code: ${e.code}');
+      debugPrint('Firebase error message: ${e.message}');
+    }
     // Cho phép ứng dụng tiếp tục mà không cần Firebase
   }
 }
@@ -40,40 +54,51 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
   
-  // Chạy ứng dụng ngay lập tức, không chờ các services khởi tạo xong
-  runApp(const NoteApp());
+  // Khởi tạo Firebase trước các dịch vụ khác
+  try {
+    await _initFirebase();
+  } catch (e) {
+    debugPrint('Failed to initialize Firebase in main: $e');
+  }
+  
+  // Khởi tạo AdMob sau Firebase
+  try {
+    await _initAdMob();
+  } catch (e) {
+    debugPrint('Failed to initialize AdMob in main: $e');
+  }
+  
+  // Chạy ứng dụng
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => NoteProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => AdProvider()),
+        ChangeNotifierProvider(create: (_) => SecurityProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
-class NoteApp extends StatelessWidget {
-  const NoteApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        // Lazy loading các providers để tránh khởi tạo tất cả cùng lúc
-        ChangeNotifierProvider(
-          create: (_) => ThemeProvider(),
-          lazy: false, // ThemeProvider cần được khởi tạo ngay để hiển thị đúng theme
-        ),
-        ChangeNotifierProvider(
-          create: (_) => SettingsProvider(),
-          lazy: true,
-        ),
-        ChangeNotifierProvider(
-          create: (_) => SecurityProvider(),
-          lazy: true,
-        ),
-        ChangeNotifierProvider(
-          create: (_) => AdProvider(),
-          lazy: true,
-        ),
-        ChangeNotifierProvider(
-          create: (_) => NoteProvider(),
-          lazy: true,
-        ),
-      ],
-      child: const AppContent(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Note App',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          debugShowCheckedModeBanner: false,
+          home: const AppContent(),
+        );
+      },
     );
   }
 }
@@ -88,6 +113,7 @@ class AppContent extends StatefulWidget {
 class AppContentState extends State<AppContent> with WidgetsBindingObserver {
   // Sử dụng FutureBuilder để tối ưu quá trình khởi động
   late Future<void> _initFuture;
+  bool _servicesInitialized = false;
 
   @override
   void initState() {
@@ -102,13 +128,15 @@ class AppContentState extends State<AppContent> with WidgetsBindingObserver {
   
   // Khởi tạo các services tuần tự theo thứ tự ưu tiên
   Future<void> _initializeServices() async {
+    if (_servicesInitialized) return;
+    
     try {
       // Khởi tạo theme provider trước
       final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
       await themeProvider.initialize();
       
-      // Đợi AdMob khởi tạo xong - ưu tiên thấp, có thể tải sau
-      await _initAdMob();
+      // Firebase đã được khởi tạo ở main, không cần khởi tạo lại
+      // AdMob cũng đã được khởi tạo ở main
       
       // Chỉ khởi tạo AdProvider khi widget đã gắn vào tree
       if (mounted) {
@@ -116,10 +144,9 @@ class AppContentState extends State<AppContent> with WidgetsBindingObserver {
         await adProvider.initialize();
       }
       
-      // Đợi Firebase khởi tạo xong - ưu tiên thấp nhất
-      await _initFirebase();
+      _servicesInitialized = true;
     } catch (e) {
-      debugPrint('Error initializing services: $e');
+      debugPrint('Error initializing services in AppContentState: $e');
     }
   }
   

@@ -21,7 +21,6 @@ class CategoryRepository {
             id: _uuid.v4(),
             name: category.name,
             color: category.color,
-            orderIndex: category.orderIndex,
           )
         : category;
     
@@ -46,13 +45,21 @@ class CategoryRepository {
 
   // Lấy tất cả danh mục
   Future<List<Category>> getAll() async {
-    final db = await _databaseHelper.database;
-    final maps = await db.query(
-      'categories',
-      orderBy: 'order_index ASC',
-    );
-
-    return maps.map((map) => Category.fromMap(map)).toList();
+    try {
+      final db = await _databaseHelper.database;
+      
+      final List<Map<String, dynamic>> maps = await db.query(
+        'categories',
+        orderBy: 'name ASC',
+      );
+      
+      return List.generate(maps.length, (i) {
+        return Category.fromMap(maps[i]);
+      });
+    } catch (e) {
+      print('Error getting all categories: $e');
+      return [];
+    }
   }
 
   // Cập nhật danh mục
@@ -158,33 +165,46 @@ class CategoryRepository {
       FROM categories c
       JOIN note_categories nc ON c.id = nc.category_id
       WHERE nc.note_id = ?
-      ORDER BY c.order_index ASC
+      ORDER BY c.name ASC
     ''';
     
     final maps = await db.rawQuery(query, [noteId]);
     
     return maps.map((map) => Category.fromMap(map)).toList();
   }
-
-  // Cập nhật thứ tự các danh mục
-  Future<void> reorderCategories(List<Category> categories) async {
-    final db = await _databaseHelper.database;
-    
-    // Bắt đầu transaction
-    await db.transaction((txn) async {
-      for (int i = 0; i < categories.length; i++) {
-        final category = categories[i];
-        
-        await txn.update(
-          'categories',
-          {
-            'order_index': i,
-            'updated_at': DateTime.now().millisecondsSinceEpoch,
-          },
-          where: 'id = ?',
-          whereArgs: [category.id],
-        );
-      }
-    });
+  
+  Future<List<Category>> getAllCategories() async {
+    try {
+      final db = await _databaseHelper.database;
+      final result = await db.query(
+        'categories',
+        orderBy: 'order_index ASC',
+      );
+      return result.map((map) => Category.fromMap(map)).toList();
+    } catch (e) {
+      print('Error getting all categories: $e');
+      return [];
+    }
+  }
+  
+  Future<bool> reorderCategories(List<Category> categories) async {
+    try {
+      final db = await _databaseHelper.database;
+      await db.transaction((txn) async {
+        for (int i = 0; i < categories.length; i++) {
+          final category = categories[i].copyWith(orderIndex: i);
+          await txn.update(
+            'categories',
+            category.toMap(),
+            where: 'id = ?',
+            whereArgs: [category.id],
+          );
+        }
+      });
+      return true;
+    } catch (e) {
+      print('Error reordering categories: $e');
+      return false;
+    }
   }
 } 

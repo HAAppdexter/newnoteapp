@@ -94,45 +94,13 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
       ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildAdBanner(),
-          _buildBottomNavigationBar(),
-        ],
-      ),
+      bottomNavigationBar: _buildAdBanner(),
       floatingActionButton: _currentIndex == 0 ? _buildFAB() : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
   
   // Tách các widgets để cải thiện khả năng đọc và tạo điều kiện cho Flutter tối ưu rebuilds
-  Widget _buildBottomNavigationBar() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final theme = Theme.of(context);
-    
-    return BottomNavigationBar(
-      currentIndex: _currentIndex,
-      onTap: _onTabSelected,
-      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-      selectedItemColor: theme.colorScheme.primary,
-      unselectedItemColor: isDarkMode ? const Color(0xFFAAAAAA) : const Color(0xFF757575),
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.note),
-          label: 'Ghi chú',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.category),
-          label: 'Danh mục',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.settings),
-          label: 'Cài đặt',
-        ),
-      ],
-    );
-  }
-  
   Widget _buildFAB() {
     final theme = Theme.of(context);
     

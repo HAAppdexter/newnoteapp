@@ -1,3 +1,5 @@
+import 'package:newnoteapp/models/category.dart';
+
 class Note {
   final String id;
   String title;
@@ -10,6 +12,7 @@ class Note {
   bool isDeleted;
   DateTime? deletedAt;
   bool isProtected;
+  List<Category> categories;
 
   Note({
     required this.id,
@@ -23,6 +26,7 @@ class Note {
     this.isDeleted = false,
     this.deletedAt,
     this.isProtected = false,
+    this.categories = const [],
   });
 
   // Tạo một Note mới
@@ -33,6 +37,7 @@ class Note {
     String color = '#FFFFFF',
     bool isPinned = false,
     bool isProtected = false,
+    List<Category> categories = const [],
   }) {
     final now = DateTime.now();
     return Note(
@@ -44,6 +49,7 @@ class Note {
       color: color,
       isPinned: isPinned,
       isProtected: isProtected,
+      categories: categories,
     );
   }
 
@@ -63,6 +69,7 @@ class Note {
           ? DateTime.fromMillisecondsSinceEpoch(map['deleted_at'])
           : null,
       isProtected: map['is_protected'] == 1,
+      categories: [],
     );
   }
 
@@ -93,6 +100,7 @@ class Note {
     bool? isDeleted,
     DateTime? deletedAt,
     bool? isProtected,
+    List<Category>? categories,
   }) {
     return Note(
       id: this.id,
@@ -106,6 +114,7 @@ class Note {
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
       isProtected: isProtected ?? this.isProtected,
+      categories: categories ?? this.categories,
     );
   }
 } 

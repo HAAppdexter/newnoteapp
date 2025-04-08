@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:newnoteapp/providers/note_provider.dart';
 import 'package:newnoteapp/providers/settings_provider.dart';
+import 'package:newnoteapp/providers/theme_provider.dart';
 import 'package:newnoteapp/models/note.dart';
 import 'package:newnoteapp/database/note_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:newnoteapp/screens/notes/widgets/note_card.dart';
 import 'package:newnoteapp/screens/notes/note_editor_screen.dart';
+import 'package:newnoteapp/providers/ad_provider.dart';
+import 'package:newnoteapp/screens/categories/categories_screen.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:newnoteapp/themes/app_theme.dart';
 
 class NotesScreen extends StatefulWidget {
-  const NotesScreen({super.key});
+  const NotesScreen({Key? key}) : super(key: key);
 
   @override
   State<NotesScreen> createState() => _NotesScreenState();
@@ -17,69 +22,98 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClientMixin {
   bool _isLoading = false;
-  String _filter = 'all'; // all, pinned, archived, deleted
-  String _view = 'grid'; // grid, list
+  List<Note> _notes = [];
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
+  bool _isGridView = true; // Mặc định hiển thị dạng lưới
   
-  // Đảm bảo state được giữ khi chuyển tab
+  // Active tab and sort options
+  String _selectedTab = 'All';
+  String _currentSortMethod = 'by date changed';
+  bool _showOnlyFavorites = false;
+  
+  // Tabs and sort options
+  final List<String> _tabs = ['All', '#Categories', 'Calendar', 'Unsorted', 'Completed'];
+  final List<String> _sortOptions = [
+    'by date changed',
+    'by date added',
+    'alphabetical',
+    'by scheduled date'
+  ];
+  
   @override
   bool get wantKeepAlive => true;
-  
+
   @override
   void initState() {
     super.initState();
     _loadNotes();
-    
-    // Lấy chế độ xem mặc định từ settings
+    _loadBannerAd();
+
+    // Đăng ký lắng nghe thay đổi từ NoteProvider
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-      setState(() {
-        _view = settingsProvider.defaultView;
-      });
+      final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+      noteProvider.addListener(_onNotesChanged);
     });
   }
-  
+
   @override
   void dispose() {
+    // Hủy đăng ký lắng nghe
+    final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+    noteProvider.removeListener(_onNotesChanged);
+    
     _searchController.dispose();
+    _bannerAd?.dispose();
     super.dispose();
   }
-  
+
+  void _onNotesChanged() {
+    if (mounted) {
+      final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+      setState(() {
+        _notes = noteProvider.notes;
+      });
+    }
+  }
+
   Future<void> _loadNotes() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
     
-    final noteProvider = Provider.of<NoteProvider>(context, listen: false);
-    
     try {
-      // Thiết lập bộ lọc
-      NoteFilter filter;
-      switch (_filter) {
-        case 'pinned':
-          filter = NoteFilter.pinned;
-          break;
-        case 'archived':
-          filter = NoteFilter.archived;
-          break;
-        case 'deleted':
-          filter = NoteFilter.deleted;
-          break;
-        default:
-          filter = NoteFilter.all;
+      final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+      
+      // Nếu provider không được khởi tạo, chỉ đặt trạng thái loading = false và trả về
+      if (!noteProvider.isInitialized) {
+        debugPrint('NoteProvider is not initialized yet. Waiting...');
+        
+        // Đặt notes bằng danh sách hiện có từ provider (có thể trống)
+        if (mounted) {
+          setState(() {
+            _notes = noteProvider.notes;
+            _isLoading = false;
+          });
+        }
+        return;
       }
       
-      // Nếu đang tìm kiếm
-      if (_searchQuery.isNotEmpty) {
-        await noteProvider.searchNotes(_searchQuery);
-      } else {
-        await noteProvider.changeFilter(filter);
+      // Lấy danh sách ghi chú trực tiếp từ provider mà không cần gọi loadNotes
+      if (mounted) {
+        setState(() {
+          _notes = noteProvider.notes;
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      print('Error loading notes: $e');
       // Không hiển thị snackbar để tránh quá nhiều thông báo lỗi
-    } finally {
+      debugPrint('Error loading notes in NotesScreen: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -87,115 +121,200 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
       }
     }
   }
-  
-  void _showFilterMenu(BuildContext context) {
+
+  void _loadBannerAd() {
+    final adProvider = Provider.of<AdProvider>(context, listen: false);
+    
+    // Nếu quảng cáo đã load, sử dụng nó
+    if (adProvider.isBannerAdLoaded) {
+      setState(() {
+        _bannerAd = adProvider.bannerAd;
+        _isBannerAdLoaded = true;
+      });
+    }
+    
+    // Đăng ký lắng nghe sự thay đổi trạng thái quảng cáo
+    adProvider.addListener(() {
+      if (mounted) {
+        setState(() {
+          _bannerAd = adProvider.bannerAd;
+          _isBannerAdLoaded = adProvider.isBannerAdLoaded;
+        });
+      }
+    });
+  }
+
+  void _toggleViewMode() {
+    // Đánh dấu tương tác với button để hiển thị quảng cáo
+    final adProvider = Provider.of<AdProvider>(context, listen: false);
+    adProvider.trackButtonClick();
+    
+    setState(() {
+      _isGridView = !_isGridView;
+    });
+  }
+
+  void _showSortOptions() {
     showModalBottomSheet(
       context: context,
       builder: (context) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.notes),
-                title: const Text('Tất cả ghi chú'),
+            children: _sortOptions.map((option) {
+              return ListTile(
+                title: Text(option),
+                leading: option == _currentSortMethod 
+                    ? const Icon(Icons.check, color: Colors.green) 
+                    : const SizedBox(width: 24),
                 onTap: () {
                   setState(() {
-                    _filter = 'all';
+                    _currentSortMethod = option;
                   });
-                  _loadNotes();
+                  // Apply sorting
+                  _sortNotes();
                   Navigator.pop(context);
                 },
-                selected: _filter == 'all',
-              ),
-              ListTile(
-                leading: const Icon(Icons.push_pin),
-                title: const Text('Ghi chú đã ghim'),
-                onTap: () {
-                  setState(() {
-                    _filter = 'pinned';
-                  });
-                  _loadNotes();
-                  Navigator.pop(context);
-                },
-                selected: _filter == 'pinned',
-              ),
-              ListTile(
-                leading: const Icon(Icons.archive),
-                title: const Text('Lưu trữ'),
-                onTap: () {
-                  setState(() {
-                    _filter = 'archived';
-                  });
-                  _loadNotes();
-                  Navigator.pop(context);
-                },
-                selected: _filter == 'archived',
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('Thùng rác'),
-                onTap: () {
-                  setState(() {
-                    _filter = 'deleted';
-                  });
-                  _loadNotes();
-                  Navigator.pop(context);
-                },
-                selected: _filter == 'deleted',
-              ),
-            ],
+              );
+            }).toList(),
           ),
         );
       },
     );
   }
   
-  void _showSortMenu(BuildContext context) {
+  void _sortNotes() {
+    final List<Note> sortedNotes = List.from(_notes);
+    
+    switch (_currentSortMethod) {
+      case 'by date changed':
+        sortedNotes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        break;
+      case 'by date added':
+        sortedNotes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case 'alphabetical':
+        sortedNotes.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+      case 'by scheduled date':
+        // Assuming you might add a scheduledDate field in the future
+        sortedNotes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        break;
+    }
+    
+    setState(() {
+      _notes = sortedNotes;
+    });
+  }
+  
+  void _toggleFavoriteFilter() {
+    setState(() {
+      _showOnlyFavorites = !_showOnlyFavorites;
+    });
+  }
+  
+  void _changeTab(String tab) {
+    if (_selectedTab == tab) return;
+    
+    setState(() {
+      _selectedTab = tab;
+    });
+    
+    // Apply filters based on tab
+    final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+    
+    switch (tab) {
+      case 'All':
+        noteProvider.changeFilter(NoteFilter.all);
+        break;
+      case '#Categories':
+        // Show categories in a bottom sheet
+        _showCategoriesBottomSheet();
+        break;
+      case 'Calendar':
+        // Show calendar view
+        _showCalendarView();
+        break;
+      case 'Unsorted':
+        // Show notes without categories
+        _showUnsortedNotes();
+        break;
+      case 'Completed':
+        // Show completed notes (checkbox style notes with all items checked)
+        _showCompletedNotes();
+        break;
+    }
+  }
+
+  void _showCategoriesBottomSheet() {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (context) {
         final noteProvider = Provider.of<NoteProvider>(context);
+        final categories = noteProvider.categories;
         
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: const Icon(Icons.update),
-                title: const Text('Mới nhất trước'),
-                onTap: () {
-                  noteProvider.changeSort(NoteSort.updatedDesc);
-                  Navigator.pop(context);
-                },
-                selected: noteProvider.currentSort == NoteSort.updatedDesc,
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Chọn danh mục',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CategoriesScreen(),
+                          ),
+                        );
+                      },
+                      tooltip: 'Thêm danh mục',
+                    ),
+                  ],
+                ),
               ),
-              ListTile(
-                leading: const Icon(Icons.history),
-                title: const Text('Cũ nhất trước'),
-                onTap: () {
-                  noteProvider.changeSort(NoteSort.updatedAsc);
-                  Navigator.pop(context);
-                },
-                selected: noteProvider.currentSort == NoteSort.updatedAsc,
-              ),
-              ListTile(
-                leading: const Icon(Icons.title),
-                title: const Text('A-Z'),
-                onTap: () {
-                  noteProvider.changeSort(NoteSort.titleAsc);
-                  Navigator.pop(context);
-                },
-                selected: noteProvider.currentSort == NoteSort.titleAsc,
-              ),
-              ListTile(
-                leading: const Icon(Icons.title),
-                title: const Text('Z-A'),
-                onTap: () {
-                  noteProvider.changeSort(NoteSort.titleDesc);
-                  Navigator.pop(context);
-                },
-                selected: noteProvider.currentSort == NoteSort.titleDesc,
+              Expanded(
+                child: ListView.builder(
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    final categoryColor = AppTheme.hexToColor(category.color);
+                    
+                    return ListTile(
+                      leading: Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: categoryColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      title: Text(category.name),
+                      onTap: () {
+                        Navigator.pop(context);
+                        noteProvider.selectCategory(category.id);
+                        setState(() {
+                          _selectedTab = 'All'; // Reset selected tab
+                        });
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -203,112 +322,114 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
       },
     );
   }
-  
-  void _toggleView() {
-    setState(() {
-      _view = _view == 'grid' ? 'list' : 'grid';
-    });
+
+  void _showCalendarView() {
+    // For now just reset to all notes with a message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Calendar view sẽ được phát triển trong bản cập nhật tiếp theo'),
+      ),
+    );
     
-    // Lưu lại setting
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    settingsProvider.setDefaultView(_view);
+    final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+    noteProvider.changeFilter(NoteFilter.all);
   }
-  
-  void _handleSearch(String query) {
-    setState(() {
-      _searchQuery = query;
-    });
-    _loadNotes();
+
+  void _showUnsortedNotes() {
+    // Show notes without categories
+    final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+    noteProvider.showUnsortedNotes();
+  }
+
+  void _showCompletedNotes() {
+    // Show completed notes (checkbox style notes with all items checked)
+    final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+    noteProvider.showCompletedNotes();
+  }
+
+  List<Note> _getFilteredNotes() {
+    if (!_showOnlyFavorites) return _notes;
     
-    if (query.isNotEmpty) {
-      // Lưu từ khóa tìm kiếm gần đây
-      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-      settingsProvider.addRecentSearch(query);
-    }
+    return _notes.where((note) => note.isPinned).toList();
   }
-  
-  void _clearSearch() {
-    _searchController.clear();
-    setState(() {
-      _searchQuery = '';
-    });
-    _loadNotes();
-  }
-  
+
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Needed for AutomaticKeepAliveClientMixin
+    super.build(context);
+    
+    final filteredNotes = _getFilteredNotes();
     
     return Scaffold(
       appBar: AppBar(
-        title: _searchQuery.isEmpty
-            ? const Text('Ghi chú')
-            : TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Tìm kiếm...',
-                  border: InputBorder.none,
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: _clearSearch,
-                  ),
-                ),
-                onSubmitted: _handleSearch,
+        title: _isSearching
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Tìm kiếm ghi chú...',
+                border: InputBorder.none,
               ),
+              onChanged: (query) {
+                final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+                noteProvider.searchNotes(query);
+              },
+            )
+          : const Text('Notes', style: TextStyle(fontSize: 28)),
         actions: [
           IconButton(
-            icon: Icon(_searchQuery.isEmpty ? Icons.search : Icons.cancel),
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
             onPressed: () {
-              if (_searchQuery.isEmpty) {
-                setState(() {
-                  // Hiển thị thanh tìm kiếm
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
                   _searchController.clear();
-                });
-              } else {
-                _clearSearch();
-              }
+                  final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+                  noteProvider.clearSearch();
+                }
+              });
             },
           ),
           IconButton(
-            icon: Icon(_view == 'grid' ? Icons.view_list : Icons.grid_view),
-            onPressed: _toggleView,
+            icon: Icon(_showOnlyFavorites 
+              ? Icons.star 
+              : Icons.star_border),
+            onPressed: _toggleFavoriteFilter,
           ),
-          PopupMenuButton(
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'filter',
-                child: Row(
-                  children: [
-                    Icon(Icons.filter_list),
-                    SizedBox(width: 8),
-                    Text('Lọc ghi chú'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'sort',
-                child: Row(
-                  children: [
-                    Icon(Icons.sort),
-                    SizedBox(width: 8),
-                    Text('Sắp xếp'),
-                  ],
-                ),
-              ),
-            ],
-            onSelected: (value) {
-              if (value == 'filter') {
-                _showFilterMenu(context);
-              } else if (value == 'sort') {
-                _showSortMenu(context);
-              }
-            },
+          IconButton(
+            icon: const Icon(Icons.sort),
+            onPressed: _showSortOptions,
           ),
         ],
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
-      body: _buildBody(),
+      body: Column(
+        children: [
+          _buildTabsRow(),
+          Expanded(
+            child: _isLoading 
+              ? const Center(child: CircularProgressIndicator())
+              : filteredNotes.isEmpty 
+                ? _buildEmptyState()
+                : _buildNotesGrid(filteredNotes),
+          ),
+          if (_isBannerAdLoaded && _bannerAd != null)
+            SizedBox(
+              width: _bannerAd!.size.width.toDouble(),
+              height: 50,
+              child: AdWidget(
+                key: ValueKey<int>(identityHashCode(_bannerAd)),
+                ad: _bannerAd!,
+              ),
+            ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // Đánh dấu tương tác với button để hiển thị quảng cáo
+          final adProvider = Provider.of<AdProvider>(context, listen: false);
+          adProvider.trackButtonClick();
+          
           // Mở màn hình tạo ghi chú mới
           Navigator.push(
             context,
@@ -322,236 +443,138 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
             }
           });
         },
-        child: const Icon(Icons.add),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+        shape: const CircleBorder(),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildTabsRow() {
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _tabs.length,
+        itemBuilder: (context, index) {
+          final tab = _tabs[index];
+          final isSelected = tab == _selectedTab;
+          
+          return GestureDetector(
+            onTap: () => _changeTab(tab),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              margin: const EdgeInsets.only(left: 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: isSelected 
+                        ? Theme.of(context).colorScheme.primary 
+                        : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+              ),
+              child: Text(
+                tab,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: isSelected 
+                      ? Theme.of(context).colorScheme.primary 
+                      : Colors.grey,
+                ),
+              ),
+            ),
+          );
+        }
       ),
     );
   }
-  
-  Widget _buildBody() {
-    return Consumer<NoteProvider>(
-      builder: (context, noteProvider, child) {
-        if (_isLoading || noteProvider.isLoading) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-        
-        final notes = noteProvider.notes;
-        
-        if (notes.isEmpty) {
-          return _buildEmptyState();
-        }
-        
-        return _view == 'grid'
-            ? _buildGridView(notes)
-            : _buildListView(notes);
-      },
-    );
-  }
-  
+
   Widget _buildEmptyState() {
-    IconData icon;
-    String message;
-    
-    if (_searchQuery.isNotEmpty) {
-      icon = Icons.search_off;
-      message = 'Không tìm thấy ghi chú nào cho "$_searchQuery"';
-    } else {
-      switch (_filter) {
-        case 'pinned':
-          icon = Icons.push_pin_outlined;
-          message = 'Chưa có ghi chú nào được ghim';
-          break;
-        case 'archived':
-          icon = Icons.archive_outlined;
-          message = 'Chưa có ghi chú nào được lưu trữ';
-          break;
-        case 'deleted':
-          icon = Icons.delete_outline;
-          message = 'Thùng rác trống';
-          break;
-        default:
-          icon = Icons.note_outlined;
-          message = 'Chưa có ghi chú nào. Tạo ghi chú mới?';
-      }
-    }
-    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 80,
-            color: Colors.grey,
-          ),
+          Icon(Icons.note, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            message,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
+            'Không có ghi chú nào',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey[600],
             ),
-            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Nhấn nút + để tạo ghi chú mới',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
           ),
         ],
       ),
     );
   }
-  
-  Widget _buildGridView(List<Note> notes) {
-    // Tách riêng các ghi chú đã ghim và chưa ghim
-    final pinnedNotes = notes.where((note) => note.isPinned).toList();
-    final unpinnedNotes = notes.where((note) => !note.isPinned).toList();
-    
-    return CustomScrollView(
-      slivers: [
-        // Hiển thị ghi chú đã ghim
-        if (pinnedNotes.isNotEmpty && _filter != 'pinned') ...[
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Đã ghim',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.85,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildNoteItem(pinnedNotes[index]),
-                childCount: pinnedNotes.length,
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Khác',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-          ),
-        ],
-        
-        // Hiển thị các ghi chú khác
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.85,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => _buildNoteItem(
-                pinnedNotes.isNotEmpty && _filter != 'pinned'
-                    ? unpinnedNotes[index]
-                    : notes[index],
-              ),
-              childCount: pinnedNotes.isNotEmpty && _filter != 'pinned'
-                  ? unpinnedNotes.length
-                  : notes.length,
-            ),
-          ),
+
+  Widget _buildNotesGrid(List<Note> notes) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.9,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
         ),
-      ],
+        itemCount: notes.length,
+        itemBuilder: (context, index) {
+          return _buildGridNoteCard(notes[index]);
+        },
+      ),
     );
   }
-  
-  Widget _buildListView(List<Note> notes) {
-    // Tách riêng các ghi chú đã ghim và chưa ghim
-    final pinnedNotes = notes.where((note) => note.isPinned).toList();
-    final unpinnedNotes = notes.where((note) => !note.isPinned).toList();
-    
-    return CustomScrollView(
-      slivers: [
-        // Hiển thị ghi chú đã ghim
-        if (pinnedNotes.isNotEmpty && _filter != 'pinned') ...[
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Đã ghim',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-          ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => _buildNoteListItem(pinnedNotes[index]),
-              childCount: pinnedNotes.length,
-            ),
-          ),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Khác',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-          ),
-        ],
-        
-        // Hiển thị các ghi chú khác
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => _buildNoteListItem(
-              pinnedNotes.isNotEmpty && _filter != 'pinned'
-                  ? unpinnedNotes[index]
-                  : notes[index],
-            ),
-            childCount: pinnedNotes.isNotEmpty && _filter != 'pinned'
-                ? unpinnedNotes.length
-                : notes.length,
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildNoteItem(Note note) {
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    final showDate = settingsProvider.showDate;
-    final formattedDate = DateFormat('dd/MM/yyyy').format(note.updatedAt);
-    
+
+  Widget _buildGridNoteCard(Note note) {
     Color cardColor = Colors.white;
     if (note.color.isNotEmpty) {
       cardColor = Color(int.parse(note.color.replaceAll('#', '0xFF')));
     }
     
+    // Format date for more user-friendly display
+    String formattedDate;
+    final now = DateTime.now();
+    final difference = now.difference(note.updatedAt);
+    
+    if (difference.inDays == 0) {
+      // Today - just show time
+      formattedDate = 'Today, ${DateFormat('HH:mm').format(note.updatedAt)}';
+    } else if (difference.inDays == 1) {
+      // Yesterday
+      formattedDate = 'Yesterday, ${DateFormat('HH:mm').format(note.updatedAt)}';
+    } else if (difference.inDays < 7) {
+      // Within a week - show day name
+      formattedDate = '${DateFormat('E').format(note.updatedAt)}, ${DateFormat('HH:mm').format(note.updatedAt)}';
+    } else {
+      // Over a week - show full date
+      formattedDate = DateFormat('dd/MM/yy HH:mm').format(note.updatedAt);
+    }
+    
+    // Extract first few lines for preview
+    final contentPreview = _getContentPreview(note.content);
+    
     return Card(
       color: cardColor,
-      margin: const EdgeInsets.all(4),
+      elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
       ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          // Mở màn hình xem/sửa ghi chú
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -559,162 +582,192 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
             ),
           ).then((value) {
             if (value == true) {
-              // Nếu có thay đổi, cập nhật lại danh sách
               _loadNotes();
             }
           });
         },
-        borderRadius: BorderRadius.circular(8),
+        onLongPress: () => _showNoteOptions(note),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Title and pin icon
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Text(
                       note.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                      style: TextStyle(
                         fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _getContrastColor(cardColor),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (note.isPinned)
-                    const Icon(
-                      Icons.push_pin,
-                      size: 18,
+                    Icon(
+                      Icons.star,
+                      color: Colors.amber,
+                      size: 20,
                     ),
                 ],
               ),
+              
               const SizedBox(height: 8),
+              
+              // Content preview
               Expanded(
                 child: Text(
-                  note.content,
-                  style: const TextStyle(fontSize: 14),
+                  contentPreview,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _getContrastColor(cardColor).withOpacity(0.8),
+                  ),
                   maxLines: 6,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (showDate) ...[
-                const SizedBox(height: 8),
-                Text(
-                  formattedDate,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+              
+              // Date/time
+              Text(
+                formattedDate,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: _getContrastColor(cardColor).withOpacity(0.6),
                 ),
-              ],
-              if (note.isProtected)
-                const Icon(
-                  Icons.lock,
-                  size: 16,
-                  color: Colors.grey,
-                ),
+                textAlign: TextAlign.right,
+              ),
             ],
           ),
         ),
       ),
     );
   }
-  
-  Widget _buildNoteListItem(Note note) {
-    final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
-    final showDate = settingsProvider.showDate;
-    final formattedDate = DateFormat('dd/MM/yyyy').format(note.updatedAt);
-    
-    Color cardColor = Colors.white;
-    if (note.color.isNotEmpty) {
-      cardColor = Color(int.parse(note.color.replaceAll('#', '0xFF')));
-    }
-    
-    return Card(
-      color: cardColor,
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+
+  void _showNoteOptions(Note note) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      child: InkWell(
-        onTap: () {
-          // Mở màn hình xem/sửa ghi chú
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => NoteEditorScreen(noteId: note.id),
-            ),
-          ).then((value) {
-            if (value == true) {
-              // Nếu có thay đổi, cập nhật lại danh sách
-              _loadNotes();
-            }
-          });
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      note.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      if (note.isProtected)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 8),
-                          child: Icon(
-                            Icons.lock,
-                            size: 18,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      if (note.isPinned)
-                        const Icon(
-                          Icons.push_pin,
-                          size: 18,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                note.content,
-                style: const TextStyle(fontSize: 14),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (showDate) ...[
-                const SizedBox(height: 8),
-                Text(
-                  formattedDate,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.check_circle_outline),
+                  title: const Text('Mark as completed'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Implement completion functionality
+                  },
+                ),
+                ListTile(
+                  leading: Icon(note.isPinned ? Icons.star : Icons.star_border),
+                  title: Text(note.isPinned ? 'Remove from favorites' : 'Mark as favorite'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _toggleNoteFavorite(note);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.content_copy),
+                  title: const Text('Copy note'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Implement copy functionality
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.push_pin_outlined),
+                  title: const Text('Pin note'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _toggleNoteFavorite(note);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.share_outlined),
+                  title: const Text('Share note'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Implement share functionality
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text('Delete', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteNote(note);
+                  },
                 ),
               ],
-            ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+  
+  Future<void> _toggleNoteFavorite(Note note) async {
+    try {
+      final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+      await noteProvider.updateNote(
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        color: note.color,
+        isPinned: !note.isPinned,
+        isProtected: note.isProtected,
+      );
+      
+      _loadNotes();
+    } catch (e) {
+      debugPrint('Error toggling favorite: $e');
+    }
+  }
+  
+  Future<void> _deleteNote(Note note) async {
+    try {
+      final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+      await noteProvider.deleteNote(note.id);
+      
+      _loadNotes();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Note deleted'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () {
+              // Ideally would restore the note
+            },
           ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      debugPrint('Error deleting note: $e');
+    }
+  }
+
+  String _getContentPreview(String content) {
+    if (content.length > 200) {
+      return content.substring(0, 200) + '...';
+    }
+    return content;
+  }
+
+  Color _getContrastColor(Color backgroundColor) {
+    // Calculate luminance (0 is black, 1 is white)
+    final double luminance = backgroundColor.computeLuminance();
+    return luminance > 0.5 ? Colors.black : Colors.white;
   }
 } 

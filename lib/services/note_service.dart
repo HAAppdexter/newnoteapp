@@ -178,4 +178,55 @@ class NoteService {
   Future<void> removeNoteFromCategory(String noteId, String categoryId) async {
     await _noteCategoryRepository.delete(noteId, categoryId);
   }
+
+  // Đếm số ghi chú trong danh mục
+  Future<int> countNotesInCategory(String categoryId) async {
+    return await _noteCategoryRepository.countNotesInCategory(categoryId);
+  }
+  
+  // Xóa danh mục
+  Future<bool> deleteCategory(String categoryId) async {
+    // Xóa các liên kết với note trước
+    await _noteCategoryRepository.deleteAllForCategory(categoryId);
+    
+    // Xóa danh mục
+    final result = await _categoryRepository.delete(categoryId);
+    return result > 0;
+  }
+
+  // Sắp xếp lại thứ tự các danh mục
+  Future<bool> reorderCategories(List<Category> categories) async {
+    try {
+      await _categoryRepository.reorderCategories(categories);
+      return true;
+    } catch (e) {
+      print('Error reordering categories: $e');
+      return false;
+    }
+  }
+
+  // Lấy danh sách danh mục
+  Future<List<Category>> getCategories() async {
+    return await _categoryRepository.getAll();
+  }
+
+  // Lấy danh sách ghi chú không thuộc danh mục nào
+  Future<List<Note>> getUnsortedNotes() async {
+    // Lấy tất cả ghi chú (không bị xóa)
+    final allNotes = await _noteRepository.getAll(filter: NoteFilter.all);
+    final unsortedNotes = <Note>[];
+    
+    // Kiểm tra từng ghi chú
+    for (final note in allNotes) {
+      // Lấy danh mục của ghi chú
+      final categories = await _categoryRepository.getCategoriesForNote(note.id);
+      
+      // Nếu không thuộc danh mục nào, thêm vào danh sách
+      if (categories.isEmpty) {
+        unsortedNotes.add(note);
+      }
+    }
+    
+    return unsortedNotes;
+  }
 } 

@@ -82,74 +82,71 @@ class NoteRepository {
 
   // Lấy tất cả notes theo filter và sort
   Future<List<Note>> getAll({
-    NoteFilter filter = NoteFilter.active,
+    NoteFilter filter = NoteFilter.all,
     NoteSort sort = NoteSort.updatedNewest,
   }) async {
-    final db = await _databaseHelper.database;
-
-    String whereClause;
-    switch (filter) {
-      case NoteFilter.all:
-        whereClause = 'is_deleted = 0';
-        break;
-      case NoteFilter.active:
-        whereClause = 'is_deleted = 0 AND is_archived = 0';
-        break;
-      case NoteFilter.archived:
-        whereClause = 'is_deleted = 0 AND is_archived = 1';
-        break;
-      case NoteFilter.deleted:
-        whereClause = 'is_deleted = 1';
-        break;
-      case NoteFilter.pinned:
-        whereClause = 'is_deleted = 0 AND is_pinned = 1';
-        break;
+    try {
+      final db = await _databaseHelper.database;
+  
+      String whereClause;
+      switch (filter) {
+        case NoteFilter.all:
+          whereClause = 'is_deleted = 0';
+          break;
+        case NoteFilter.active:
+          whereClause = 'is_deleted = 0 AND is_archived = 0';
+          break;
+        case NoteFilter.archived:
+          whereClause = 'is_deleted = 0 AND is_archived = 1';
+          break;
+        case NoteFilter.deleted:
+          whereClause = 'is_deleted = 1';
+          break;
+        case NoteFilter.pinned:
+          whereClause = 'is_deleted = 0 AND is_pinned = 1';
+          break;
+      }
+  
+      String orderBy;
+      switch (sort) {
+        case NoteSort.createdNewest:
+          orderBy = 'created_at DESC';
+          break;
+        case NoteSort.createdOldest:
+          orderBy = 'created_at ASC';
+          break;
+        case NoteSort.updatedNewest:
+        case NoteSort.updatedDesc:
+          orderBy = 'updated_at DESC';
+          break;
+        case NoteSort.updatedOldest:
+        case NoteSort.updatedAsc:
+          orderBy = 'updated_at ASC';
+          break;
+        case NoteSort.titleAZ:
+        case NoteSort.titleAsc:
+          orderBy = 'title ASC';
+          break;
+        case NoteSort.titleZA:
+        case NoteSort.titleDesc:
+          orderBy = 'title DESC';
+          break;
+      }
+  
+      // Ghim notes luôn hiển thị đầu tiên
+      orderBy = 'is_pinned DESC, $orderBy';
+  
+      final maps = await db.query(
+        'notes',
+        where: whereClause,
+        orderBy: orderBy,
+      );
+  
+      return maps.map((map) => Note.fromMap(map)).toList();
+    } catch (e) {
+      print('Error getting all notes: $e');
+      return [];
     }
-
-    String orderBy;
-    switch (sort) {
-      case NoteSort.createdNewest:
-        orderBy = 'created_at DESC';
-        break;
-      case NoteSort.createdOldest:
-        orderBy = 'created_at ASC';
-        break;
-      case NoteSort.updatedNewest:
-        orderBy = 'updated_at DESC';
-        break;
-      case NoteSort.updatedOldest:
-        orderBy = 'updated_at ASC';
-        break;
-      case NoteSort.titleAZ:
-        orderBy = 'title ASC';
-        break;
-      case NoteSort.titleZA:
-        orderBy = 'title DESC';
-        break;
-      case NoteSort.updatedDesc:
-        orderBy = 'updated_at DESC';
-        break;
-      case NoteSort.updatedAsc:
-        orderBy = 'updated_at ASC';
-        break;
-      case NoteSort.titleAsc:
-        orderBy = 'title ASC';
-        break;
-      case NoteSort.titleDesc:
-        orderBy = 'title DESC';
-        break;
-    }
-
-    // Ghim notes luôn hiển thị đầu tiên
-    orderBy = 'is_pinned DESC, $orderBy';
-
-    final maps = await db.query(
-      'notes',
-      where: whereClause,
-      orderBy: orderBy,
-    );
-
-    return maps.map((map) => Note.fromMap(map)).toList();
   }
 
   // Cập nhật note

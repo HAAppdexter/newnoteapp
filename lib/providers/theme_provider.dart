@@ -131,4 +131,23 @@ class ThemeProvider extends ChangeNotifier {
     SchedulerBinding.instance.platformDispatcher.onPlatformBrightnessChanged = null;
     super.dispose();
   }
+
+  void updateTheme() {
+    try {
+      // Create new theme instances for both light and dark modes
+      _cachedLightTheme = AppTheme.getTheme(
+        isDark: false,
+        accentColor: accentColor,
+      );
+      
+      _cachedDarkTheme = AppTheme.getTheme(
+        isDark: true,
+        accentColor: accentColor,
+      );
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating theme: $e');
+    }
+  }
 } 

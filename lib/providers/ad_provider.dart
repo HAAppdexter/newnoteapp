@@ -28,6 +28,15 @@ class AdProvider extends ChangeNotifier {
   static const String _bannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
   static const String _interstitialAdUnitId = 'ca-app-pub-3940256099942544/1033173712';
 
+  // Biến để theo dõi trạng thái cho interstitial
+  DateTime? _lastInterstitialShownTime; // Thời điểm hiển thị quảng cáo gần nhất
+  bool _isInEditingMode = false; // Cờ đánh dấu đang trong chế độ soạn thảo
+  DateTime _appStartTime = DateTime.now(); // Thời điểm bắt đầu ứng dụng
+  
+  // Các khoảng thời gian
+  static const int initialPeriodSeconds = 15; // 15 giây đầu
+  static const int regularPeriodSeconds = 60; // 60 giây sau đó
+
   // Getters
   BannerAd? get bannerAd => _bannerAd;
   InterstitialAd? get interstitialAd => _interstitialAd;
@@ -42,14 +51,71 @@ class AdProvider extends ChangeNotifier {
       await _adMobService.initialize();
       _isInitialized = true;
       
-      // Tải quảng cáo banner
-      _loadBannerAd();
+      // Lưu thời điểm bắt đầu ứng dụng
+      _appStartTime = DateTime.now();
+      
+      // Tải quảng cáo banner với delay để tránh xung đột
+      await Future.delayed(Duration(milliseconds: 300));
+      await _loadBannerAd();
+      
+      // Khởi tạo interstitial ad với delay
+      await Future.delayed(Duration(milliseconds: 300));
+      await loadInterstitialAd();
       
       // Tải trước các quảng cáo
       _adMobService.preloadAds();
+
+      debugPrint('AdProvider initialized at ${_appStartTime.toString()}');
     } catch (e) {
       debugPrint('AdProvider initialization error: $e');
     }
+  }
+
+  // Đánh dấu bắt đầu chế độ soạn thảo
+  void enterEditingMode() {
+    _isInEditingMode = true;
+    notifyListeners();
+  }
+
+  // Đánh dấu kết thúc chế độ soạn thảo
+  void exitEditingMode() {
+    _isInEditingMode = false;
+    notifyListeners();
+  }
+
+  // Kiểm tra xem có thể hiển thị interstitial không
+  bool canShowInterstitial() {
+    // Không hiển thị khi đang soạn thảo
+    if (_isInEditingMode) return false;
+    
+    final now = DateTime.now();
+    final sinceAppStart = now.difference(_appStartTime).inSeconds;
+    
+    // Trong 15 giây đầu tiên, luôn hiển thị khi có tương tác với button
+    if (sinceAppStart <= initialPeriodSeconds) {
+      debugPrint('Within initial $initialPeriodSeconds seconds, can show ad');
+      return true;
+    }
+    
+    // Sau 15 giây đầu, kiểm tra khoảng thời gian giữa các lần hiển thị
+    if (_lastInterstitialShownTime != null) {
+      final timeSinceLastAd = now.difference(_lastInterstitialShownTime!).inSeconds;
+      
+      // Chỉ hiển thị nếu đã qua 60 giây kể từ lần cuối hiển thị
+      final canShow = timeSinceLastAd >= regularPeriodSeconds;
+      debugPrint('Last ad shown $timeSinceLastAd seconds ago, can show: $canShow');
+      return canShow;
+    }
+    
+    // Nếu chưa từng hiển thị quảng cáo, có thể hiển thị
+    return true;
+  }
+
+  // Cập nhật thời gian hiển thị quảng cáo gần nhất
+  void _updateLastShownTime() {
+    _lastInterstitialShownTime = DateTime.now();
+    debugPrint('Updated last ad shown time to: ${_lastInterstitialShownTime.toString()}');
+    notifyListeners();
   }
 
   // Tải banner ad
@@ -63,40 +129,49 @@ class AdProvider extends ChangeNotifier {
         await _bannerAd!.dispose();
         _bannerAd = null;
         _isBannerAdLoaded = false;
+        notifyListeners(); // Notify listeners when the ad is disposed
+        
+        // Delay nhỏ trước khi tạo ad mới để tránh xung đột
+        await Future.delayed(Duration(milliseconds: 100));
       }
       
-      _bannerAd = BannerAd(
-        adUnitId: _bannerAdUnitId,
-        size: AdSize.banner,
-        request: const AdRequest(),
-        listener: BannerAdListener(
-          onAdLoaded: (_) {
-            _isBannerAdLoaded = true;
-            _bannerRetryAttempt = 0;
-            _isLoadingBanner = false;
-            notifyListeners();
-          },
-          onAdFailedToLoad: (ad, error) {
-            ad.dispose();
-            _bannerAd = null;
-            _isBannerAdLoaded = false;
-            _isLoadingBanner = false;
-            
-            // Thử lại load quảng cáo với delay tăng dần
-            if (_bannerRetryAttempt < maxRetryAttempts) {
-              _bannerRetryAttempt++;
-              Future.delayed(
-                Duration(milliseconds: _bannerRetryAttempt * 1000),
-                _loadBannerAd,
-              );
-            }
-            
-            notifyListeners();
-          },
-        ),
-      );
+      // Check if the ad has already been created by another part of the app
+      if (!_isBannerAdLoaded) {
+        _bannerAd = BannerAd(
+          adUnitId: _bannerAdUnitId,
+          size: AdSize.banner,
+          request: const AdRequest(),
+          listener: BannerAdListener(
+            onAdLoaded: (_) {
+              _isBannerAdLoaded = true;
+              _bannerRetryAttempt = 0;
+              _isLoadingBanner = false;
+              debugPrint('Banner ad loaded successfully');
+              notifyListeners();
+            },
+            onAdFailedToLoad: (ad, error) {
+              debugPrint('Banner ad failed to load: ${error.message}');
+              ad.dispose();
+              _bannerAd = null;
+              _isBannerAdLoaded = false;
+              _isLoadingBanner = false;
+              
+              // Thử lại load quảng cáo với delay tăng dần
+              if (_bannerRetryAttempt < maxRetryAttempts) {
+                _bannerRetryAttempt++;
+                Future.delayed(
+                  Duration(milliseconds: _bannerRetryAttempt * 1000),
+                  _loadBannerAd,
+                );
+              }
+              
+              notifyListeners();
+            },
+          ),
+        );
 
-      await _bannerAd!.load();
+        await _bannerAd!.load();
+      }
     } catch (e) {
       _isBannerAdLoaded = false;
       _isLoadingBanner = false;
@@ -113,20 +188,18 @@ class AdProvider extends ChangeNotifier {
     }
   }
 
-  // Tải quảng cáo interstitial với cơ chế retry và bảo vệ gọi đồng thời
+  // Tải quảng cáo interstitial
   Future<void> loadInterstitialAd() async {
-    if (_isLoadingInterstitial) return;
-    _isLoadingInterstitial = true;
-    
     try {
-      // Dispose quảng cáo cũ nếu có
+      if (_isLoadingInterstitial) return;
+      _isLoadingInterstitial = true;
+      
       if (_interstitialAd != null) {
         await _interstitialAd!.dispose();
         _interstitialAd = null;
-        _isInterstitialAdLoaded = false;
       }
       
-      await InterstitialAd.load(
+      InterstitialAd.load(
         adUnitId: _interstitialAdUnitId,
         request: const AdRequest(),
         adLoadCallback: InterstitialAdLoadCallback(
@@ -136,19 +209,21 @@ class AdProvider extends ChangeNotifier {
             _interstitialRetryAttempt = 0;
             _isLoadingInterstitial = false;
             
-            // Cài đặt callback khi ad bị đóng
-            ad.fullScreenContentCallback = FullScreenContentCallback(
+            // Thiết lập callback cho quảng cáo
+            _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
               onAdDismissedFullScreenContent: (ad) {
                 ad.dispose();
                 _interstitialAd = null;
                 _isInterstitialAdLoaded = false;
-                notifyListeners();
+                // Tải lại quảng cáo mới
+                loadInterstitialAd();
               },
               onAdFailedToShowFullScreenContent: (ad, error) {
                 ad.dispose();
                 _interstitialAd = null;
                 _isInterstitialAdLoaded = false;
-                notifyListeners();
+                // Tải lại quảng cáo mới
+                loadInterstitialAd();
               },
             );
             
@@ -188,14 +263,18 @@ class AdProvider extends ChangeNotifier {
     }
   }
 
-  // Hiển thị quảng cáo interstitial nếu đã tải xong
-  Future<bool> showInterstitialAd() async {
-    if (_interstitialAd == null) {
+  // Hiển thị quảng cáo interstitial khi button được click
+  Future<bool> showInterstitialOnButtonClick() async {
+    // Nếu đang soạn thảo hoặc không thể hiển thị, trả về false
+    if (!canShowInterstitial() || _interstitialAd == null) {
       return false;
     }
     
     try {
+      debugPrint('Showing interstitial ad');
       await _interstitialAd!.show();
+      // Cập nhật thời gian hiển thị gần nhất
+      _updateLastShownTime();
       return true;
     } catch (e) {
       debugPrint('Error showing interstitial ad: $e');
@@ -213,12 +292,13 @@ class AdProvider extends ChangeNotifier {
     }
   }
 
-  // Theo dõi hành động người dùng
-  Future<void> trackUserAction() async {
+  // Theo dõi khi người dùng nhấn button
+  Future<void> trackButtonClick() async {
     try {
-      await _adMobService.trackUserAction();
+      // Gọi để hiển thị quảng cáo interstitial theo điều kiện mới
+      await showInterstitialOnButtonClick();
     } catch (e) {
-      debugPrint('Error tracking user action: $e');
+      debugPrint('Error tracking button click: $e');
     }
   }
 

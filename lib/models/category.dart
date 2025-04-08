@@ -10,7 +10,7 @@ class Category {
     required this.id,
     required this.name,
     required this.color,
-    required this.orderIndex,
+    this.orderIndex = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -20,7 +20,7 @@ class Category {
     required String id,
     required String name,
     String color = '#5D9CEC',
-    required int orderIndex,
+    int orderIndex = 0,
   }) {
     final now = DateTime.now();
     return Category(
@@ -39,7 +39,7 @@ class Category {
       id: map['id'],
       name: map['name'],
       color: map['color'] ?? '#5D9CEC',
-      orderIndex: map['order_index'],
+      orderIndex: map['order_index'] ?? 0,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at']),
     );

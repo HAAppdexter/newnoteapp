@@ -1,5 +1,10 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:flutter/material.dart';
+
+// Import biến trạng thái Firebase từ main.dart
+import 'package:newnoteapp/main.dart' show isFirebaseInitialized;
 
 class AdMobService {
   // ID quảng cáo - Cần thay thế bằng ID thật khi publish ứng dụng
@@ -33,63 +38,87 @@ class AdMobService {
     }
   }
 
-  // Singleton pattern
-  static final AdMobService _instance = AdMobService._internal();
-  factory AdMobService() => _instance;
-  AdMobService._internal();
-
-  // Biến lưu trữ các quảng cáo
+  // References
   InterstitialAd? _interstitialAd;
   RewardedAd? _rewardedAd;
-  int _interstitialLoadAttempts = 0;
-  int _rewardedAdLoadAttempts = 0;
-  int _actionsSinceLastInterstitial = 0;
   
-  // Số lượng hành động trước khi hiển thị quảng cáo
-  static const int actionsBeforeInterstitial = 5;
+  // Khởi tạo biến flags
+  bool _isInitialized = false;
+  bool _rewardedAdReady = false;
+  bool _interstitialAdReady = false;
   
-  // Số lần tối đa thử tải quảng cáo
-  static const int maxFailedLoadAttempts = 3;
+  // Đếm số lần user thực hiện hành động để hiển thị quảng cáo
+  int _actionCount = 0;
+  static const int actionThreshold = 5; // Sau 5 hành động sẽ hiển thị quảng cáo
+  
+  // Test ad units for development
+  static const String _testBannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
+  static const String _testInterstitialAdUnitId = 'ca-app-pub-3940256099942544/1033173712';
+  static const String _testRewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
+  
+  // Getters
+  bool get isInitialized => _isInitialized;
+  bool get rewardedAdReady => _rewardedAdReady;
+  bool get interstitialAdReady => _interstitialAdReady;
 
   // Khởi tạo AdMob
   Future<void> initialize() async {
     try {
-      await MobileAds.instance.initialize();
+      if (_isInitialized) return;
       
-      // Tải quảng cáo toàn màn hình
-      _createInterstitialAd();
+      // Kiểm tra xem Firebase đã khởi tạo được chưa
+      if (!isFirebaseInitialized) {
+        debugPrint('AdMobService: Firebase is not initialized, skipping AdMob initialization');
+        _isInitialized = false;
+        return;
+      }
+      
+      // Thiết lập test mode cho mọi thiết bị
+      final testDeviceIds = ["33BE2250B43518CCDA7DE426D04EE231"];
+      await MobileAds.instance.updateRequestConfiguration(
+        RequestConfiguration(testDeviceIds: testDeviceIds)
+      );
+      
+      _isInitialized = true;
+      debugPrint('AdMobService initialized successfully');
     } catch (e) {
-      print('Error initializing AdMob: $e');
+      _isInitialized = false;
+      debugPrint('Error initializing AdMobService: $e');
     }
   }
 
-  // Tạo banner ad
+  // Tạo banner ad - với kiểm tra Firebase
   BannerAd createBannerAd() {
-    try {
+    if (!_isInitialized || !isFirebaseInitialized) {
+      debugPrint('Cannot create BannerAd: AdMobService not initialized or Firebase unavailable');
+      // Return a dummy BannerAd that won't crash the app
       return BannerAd(
-        adUnitId: bannerAdUnitId,
+        adUnitId: _testBannerAdUnitId,
         size: AdSize.banner,
         request: const AdRequest(),
         listener: BannerAdListener(
-          onAdLoaded: (ad) => print('Ad loaded: ${ad.adUnitId}'),
           onAdFailedToLoad: (ad, error) {
-            print('Ad failed to load: ${ad.adUnitId}, $error');
+            debugPrint('BannerAd failed to load: ${error.message}');
             ad.dispose();
           },
         ),
       );
-    } catch (e) {
-      print('Error creating banner ad: $e');
-      // Fallback to a minimal banner ad to avoid crashes
-      return BannerAd(
-        adUnitId: Platform.isAndroid 
-            ? 'ca-app-pub-3940256099942544/6300978111' 
-            : 'ca-app-pub-3940256099942544/2934735716',
-        size: AdSize.banner,
-        request: const AdRequest(),
-        listener: const BannerAdListener(),
-      );
     }
+    
+    return BannerAd(
+      adUnitId: _testBannerAdUnitId,
+      size: AdSize.banner,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          debugPrint('BannerAd loaded successfully');
+        },
+        onAdFailedToLoad: (ad, error) {
+          debugPrint('BannerAd failed to load: ${error.message}');
+          ad.dispose();
+        },
+      ),
+    );
   }
 
   // Tạo banner ad lớn
@@ -109,136 +138,162 @@ class AdMobService {
   }
 
   // Tạo quảng cáo toàn màn hình
-  void _createInterstitialAd() {
+  Future<void> _createInterstitialAd() async {
     try {
-      InterstitialAd.load(
-        adUnitId: interstitialAdUnitId,
+      if (!_isInitialized || !isFirebaseInitialized) return;
+      
+      await InterstitialAd.load(
+        adUnitId: _testInterstitialAdUnitId,
         request: const AdRequest(),
         adLoadCallback: InterstitialAdLoadCallback(
-          onAdLoaded: (ad) {
+          onAdLoaded: (InterstitialAd ad) {
             _interstitialAd = ad;
-            _interstitialLoadAttempts = 0;
+            _interstitialAdReady = true;
+            debugPrint('Interstitial ad loaded successfully');
           },
-          onAdFailedToLoad: (error) {
-            _interstitialLoadAttempts += 1;
-            _interstitialAd = null;
-            if (_interstitialLoadAttempts < maxFailedLoadAttempts) {
-              _createInterstitialAd();
-            }
+          onAdFailedToLoad: (LoadAdError error) {
+            _interstitialAdReady = false;
+            debugPrint('InterstitialAd failed to load: ${error.message}');
           },
         ),
       );
     } catch (e) {
-      print('Error creating interstitial ad: $e');
+      _interstitialAdReady = false;
+      debugPrint('Error creating interstitial ad: $e');
     }
   }
 
   // Hiển thị quảng cáo toàn màn hình
-  Future<void> showInterstitialAd() async {
+  Future<bool> showInterstitialAd() async {
+    if (!_isInitialized || !isFirebaseInitialized) {
+      debugPrint('Cannot show interstitial ad: AdMobService not initialized or Firebase unavailable');
+      return false;
+    }
+    
+    if (_interstitialAd == null) {
+      debugPrint('Interstitial ad not loaded yet');
+      await _createInterstitialAd();
+      return false;
+    }
+    
     try {
-      if (_interstitialAd == null) {
-        print('Warning: hiển thị quảng cáo khi chưa sẵn sàng.');
-        _createInterstitialAd();
-        return;
-      }
-      
-      _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-        onAdDismissedFullScreenContent: (ad) {
-          ad.dispose();
-          _createInterstitialAd();
-        },
-        onAdFailedToShowFullScreenContent: (ad, error) {
-          ad.dispose();
-          _createInterstitialAd();
-        },
-      );
-      
       await _interstitialAd!.show();
+      _interstitialAdReady = false;
       _interstitialAd = null;
+      _createInterstitialAd(); // Reload ad for next time
+      return true;
     } catch (e) {
-      print('Error showing interstitial ad: $e');
+      debugPrint('Error showing interstitial ad: $e');
+      return false;
     }
   }
 
   // Tạo quảng cáo có thưởng
-  void _createRewardedAd() {
+  Future<void> _createRewardedAd() async {
     try {
-      RewardedAd.load(
-        adUnitId: rewardedAdUnitId,
+      if (!_isInitialized || !isFirebaseInitialized) return;
+      
+      await RewardedAd.load(
+        adUnitId: _testRewardedAdUnitId,
         request: const AdRequest(),
         rewardedAdLoadCallback: RewardedAdLoadCallback(
-          onAdLoaded: (ad) {
+          onAdLoaded: (RewardedAd ad) {
             _rewardedAd = ad;
-            _rewardedAdLoadAttempts = 0;
+            _rewardedAdReady = true;
+            debugPrint('Rewarded ad loaded successfully');
           },
-          onAdFailedToLoad: (error) {
-            _rewardedAdLoadAttempts += 1;
-            _rewardedAd = null;
-            if (_rewardedAdLoadAttempts < maxFailedLoadAttempts) {
-              _createRewardedAd();
-            }
+          onAdFailedToLoad: (LoadAdError error) {
+            _rewardedAdReady = false;
+            debugPrint('RewardedAd failed to load: ${error.message}');
           },
         ),
       );
     } catch (e) {
-      print('Error creating rewarded ad: $e');
+      _rewardedAdReady = false;
+      debugPrint('Error creating rewarded ad: $e');
     }
   }
 
   // Hiển thị quảng cáo có thưởng
   Future<bool> showRewardedAd() async {
+    if (!_isInitialized || !isFirebaseInitialized) {
+      debugPrint('Cannot show rewarded ad: AdMobService not initialized or Firebase unavailable');
+      return false;
+    }
+    
+    if (_rewardedAd == null) {
+      debugPrint('Rewarded ad not loaded yet');
+      await _createRewardedAd();
+      return false;
+    }
+    
     try {
-      if (_rewardedAd == null) {
-        print('Warning: hiển thị quảng cáo có thưởng khi chưa sẵn sàng.');
-        _createRewardedAd();
-        return false;
-      }
+      final completer = Completer<bool>();
       
-      bool userEarnedReward = false;
-      
-      await _rewardedAd!.show(
-        onUserEarnedReward: (_, reward) {
-          userEarnedReward = true;
+      _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+        onAdDismissedFullScreenContent: (ad) {
+          ad.dispose();
+          _rewardedAdReady = false;
+          _rewardedAd = null;
+          _createRewardedAd(); // Reload ad for next time
+          if (!completer.isCompleted) completer.complete(false);
+        },
+        onAdFailedToShowFullScreenContent: (ad, error) {
+          ad.dispose();
+          _rewardedAdReady = false;
+          _rewardedAd = null;
+          _createRewardedAd(); // Reload ad for next time
+          if (!completer.isCompleted) completer.complete(false);
         },
       );
       
-      _rewardedAd = null;
-      _createRewardedAd();
+      _rewardedAd!.show(onUserEarnedReward: (_, reward) {
+        if (!completer.isCompleted) completer.complete(true);
+      });
       
-      return userEarnedReward;
+      return await completer.future;
     } catch (e) {
-      print('Error showing rewarded ad: $e');
+      debugPrint('Error showing rewarded ad: $e');
       return false;
     }
   }
 
   // Gọi khi người dùng thực hiện một hành động (tạo note, xóa, cập nhật)
   // Sẽ hiển thị quảng cáo sau một số lượng hành động nhất định
-  Future<void> trackUserAction() async {
+  Future<bool> trackUserAction() async {
     try {
-      _actionsSinceLastInterstitial++;
+      if (!_isInitialized || !isFirebaseInitialized) return false;
       
-      if (_actionsSinceLastInterstitial >= actionsBeforeInterstitial) {
-        _actionsSinceLastInterstitial = 0;
-        await showInterstitialAd();
+      _actionCount++;
+      
+      if (_actionCount >= actionThreshold) {
+        _actionCount = 0;
+        
+        // Ưu tiên hiển thị interstitial first
+        if (_interstitialAdReady) {
+          return await showInterstitialAd();
+        }
       }
+      
+      return false;
     } catch (e) {
-      print('Error tracking user action: $e');
+      debugPrint('Error tracking user action: $e');
+      return false;
     }
   }
 
   // Tải trước các quảng cáo
-  void preloadAds() {
+  Future<void> preloadAds() async {
     try {
-      if (_interstitialAd == null) {
-        _createInterstitialAd();
+      if (!_isInitialized || !isFirebaseInitialized) {
+        debugPrint('Cannot preload ads: AdMobService not initialized or Firebase unavailable');
+        return;
       }
       
-      if (_rewardedAd == null) {
-        _createRewardedAd();
-      }
+      await _createInterstitialAd();
+      await _createRewardedAd();
     } catch (e) {
-      print('Error preloading ads: $e');
+      debugPrint('Error preloading ads: $e');
     }
   }
 
