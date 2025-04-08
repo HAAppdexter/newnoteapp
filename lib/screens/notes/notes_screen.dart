@@ -6,6 +6,7 @@ import 'package:newnoteapp/models/note.dart';
 import 'package:newnoteapp/database/note_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:newnoteapp/screens/notes/widgets/note_card.dart';
+import 'package:newnoteapp/screens/notes/note_editor_screen.dart';
 
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
@@ -305,7 +306,18 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Mở màn hình tạo ghi chú mới
+          // Mở màn hình tạo ghi chú mới
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const NoteEditorScreen(),
+            ),
+          ).then((value) {
+            if (value == true) {
+              // Nếu có thay đổi, cập nhật lại danh sách
+              _loadNotes();
+            }
+          });
         },
         child: const Icon(Icons.add),
       ),
@@ -536,7 +548,18 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
       ),
       child: InkWell(
         onTap: () {
-          // TODO: Mở màn hình xem/sửa ghi chú
+          // Mở màn hình xem/sửa ghi chú
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => NoteEditorScreen(noteId: note.id),
+            ),
+          ).then((value) {
+            if (value == true) {
+              // Nếu có thay đổi, cập nhật lại danh sách
+              _loadNotes();
+            }
+          });
         },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
@@ -615,7 +638,18 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
       ),
       child: InkWell(
         onTap: () {
-          // TODO: Mở màn hình xem/sửa ghi chú
+          // Mở màn hình xem/sửa ghi chú
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => NoteEditorScreen(noteId: note.id),
+            ),
+          ).then((value) {
+            if (value == true) {
+              // Nếu có thay đổi, cập nhật lại danh sách
+              _loadNotes();
+            }
+          });
         },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
