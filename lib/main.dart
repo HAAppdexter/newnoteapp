@@ -48,6 +48,14 @@ Future<void> main() async {
   // Đảm bảo framework được khởi tạo
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Set system UI overlay style to have dark status bar icons (light background)
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark, // Dark icons on light background
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
+  ));
+  
   // Cấu hình hướng màn hình
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -90,11 +98,16 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
+        // If system theme is selected, use light mode instead
+        final effectiveThemeMode = themeProvider.themeMode == ThemeMode.system 
+            ? ThemeMode.light 
+            : themeProvider.themeMode;
+            
         return MaterialApp(
           title: 'Note App',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: themeProvider.themeMode,
+          themeMode: effectiveThemeMode,
           debugShowCheckedModeBanner: false,
           home: const AppContent(),
         );
@@ -168,11 +181,16 @@ class AppContentState extends State<AppContent> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
+        // If system theme is selected, use light mode instead
+        final effectiveThemeMode = themeProvider.themeMode == ThemeMode.system 
+            ? ThemeMode.light 
+            : themeProvider.themeMode;
+            
         return MaterialApp(
           title: 'Note App',
-          theme: themeProvider.lightTheme,
-          darkTheme: themeProvider.darkTheme,
-          themeMode: themeProvider.themeMode,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: effectiveThemeMode,
           debugShowCheckedModeBanner: false,
           home: const HomeScreen(),
           // Sử dụng các kỹ thuật tối ưu khởi động

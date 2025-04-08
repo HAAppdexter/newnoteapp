@@ -16,7 +16,7 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeProvider() {
     _settingsService = SettingsService();
-    _themeMode = ThemeMode.system;
+    _themeMode = ThemeMode.light;
     _accentColor = Colors.blue;
     
     // Lấy brightness hiện tại của hệ thống

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 // import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
@@ -51,6 +52,12 @@ class AppTheme {
         fontSize: 28,
         fontWeight: FontWeight.w500,
       ),
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // Dark icons for status bar
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
     ),
     cardTheme: CardTheme(
       elevation: 0.5,
@@ -86,6 +93,12 @@ class AppTheme {
         color: Colors.white,
         fontSize: 28,
         fontWeight: FontWeight.w500,
+      ),
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, // Still using dark icons for status bar
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
     ),
     cardTheme: CardTheme(

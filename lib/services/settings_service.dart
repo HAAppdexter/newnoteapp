@@ -38,7 +38,7 @@ class SettingsService {
 
   ThemeMode getThemeMode() {
     final String? themeStr = _prefs.getString(_themeKey);
-    if (themeStr == null) return ThemeMode.system;
+    if (themeStr == null) return ThemeMode.light;
 
     switch (themeStr) {
       case 'ThemeMode.light':
@@ -46,7 +46,7 @@ class SettingsService {
       case 'ThemeMode.dark':
         return ThemeMode.dark;
       default:
-        return ThemeMode.system;
+        return ThemeMode.light;
     }
   }
 
