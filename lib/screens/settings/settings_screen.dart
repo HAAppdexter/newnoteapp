@@ -324,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             themeText = 'Tối';
             break;
           case ThemeMode.system:
-            themeText = 'Tự động (theo thiết bị)';
+            themeText = 'Tự động';
             break;
         }
         

@@ -1,3 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
 # API Integration Rules
 description: Rules for integrating Weather and AI APIs into all compatible applications
 globs: "*.js,*.jsx,*.ts,*.tsx,*.vue,*.py,*.swift,*.kt,*.java,*.cs"

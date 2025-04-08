@@ -39,17 +39,17 @@ class AppTheme {
   ];
 
   // Function to get ThemeData based on isDark flag
-  static ThemeData getTheme({bool isDark = false}) {
-    return isDark ? _getDarkTheme() : _getLightTheme();
+  static ThemeData getTheme({bool isDark = false, Color accentColor = Colors.blue}) {
+    return isDark ? _getDarkTheme(accentColor) : _getLightTheme(accentColor);
   }
 
   // Light Theme
-  static ThemeData _getLightTheme() {
+  static ThemeData _getLightTheme([Color accentColor = Colors.blue]) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      colorScheme: const ColorScheme.light(
-        primary: _primaryLightColor,
+      colorScheme: ColorScheme.light(
+        primary: accentColor,
         secondary: _secondaryLightColor,
         background: _backgroundLightColor,
         surface: _cardLightColor,
@@ -79,8 +79,8 @@ class AppTheme {
           labelSmall: TextStyle(color: _textSecondaryLightColor),
         ),
       ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: _primaryLightColor,
+      appBarTheme: AppBarTheme(
+        backgroundColor: accentColor,
         elevation: 0,
         centerTitle: true,
         foregroundColor: Colors.white,
@@ -94,8 +94,8 @@ class AppTheme {
         ),
       ),
       scaffoldBackgroundColor: _backgroundLightColor,
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: _primaryLightColor,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accentColor,
         foregroundColor: Colors.white,
         elevation: 4,
       ),
@@ -112,8 +112,8 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: _primaryLightColor,
+          borderSide: BorderSide(
+            color: accentColor,
             width: 2,
           ),
         ),
@@ -122,9 +122,9 @@ class AppTheme {
           vertical: 12,
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: Colors.white,
-        selectedItemColor: _primaryLightColor,
+        selectedItemColor: accentColor,
         unselectedItemColor: _textSecondaryLightColor,
         elevation: 8,
         type: BottomNavigationBarType.fixed,
@@ -132,7 +132,7 @@ class AppTheme {
       checkboxTheme: CheckboxThemeData(
         fillColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return _primaryLightColor;
+            return accentColor;
           }
           return Colors.transparent;
         }),
@@ -144,23 +144,23 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return _primaryLightColor;
+            return accentColor;
           }
           return Colors.grey.shade400;
         }),
         trackColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return _primaryLightColor.withOpacity(0.5);
+            return accentColor.withOpacity(0.5);
           }
           return Colors.grey.shade300;
         }),
       ),
-      tabBarTheme: const TabBarTheme(
-        labelColor: _primaryLightColor,
+      tabBarTheme: TabBarTheme(
+        labelColor: accentColor,
         unselectedLabelColor: _textSecondaryLightColor,
         indicator: UnderlineTabIndicator(
           borderSide: BorderSide(
-            color: _primaryLightColor,
+            color: accentColor,
             width: 2,
           ),
         ),
@@ -190,12 +190,12 @@ class AppTheme {
   }
 
   // Dark Theme
-  static ThemeData _getDarkTheme() {
+  static ThemeData _getDarkTheme([Color accentColor = Colors.blue]) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      colorScheme: const ColorScheme.dark(
-        primary: _primaryDarkColor,
+      colorScheme: ColorScheme.dark(
+        primary: accentColor,
         secondary: _secondaryDarkColor,
         background: _backgroundDarkColor,
         surface: _cardDarkColor,
@@ -225,7 +225,7 @@ class AppTheme {
           labelSmall: TextStyle(color: _textSecondaryDarkColor),
         ),
       ),
-      appBarTheme: const AppBarTheme(
+      appBarTheme: AppBarTheme(
         backgroundColor: _cardDarkColor,
         elevation: 0,
         centerTitle: true,
@@ -240,8 +240,8 @@ class AppTheme {
         ),
       ),
       scaffoldBackgroundColor: _backgroundDarkColor,
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: _primaryDarkColor,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accentColor,
         foregroundColor: Colors.white,
         elevation: 4,
       ),
@@ -258,8 +258,8 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: _primaryDarkColor,
+          borderSide: BorderSide(
+            color: accentColor,
             width: 2,
           ),
         ),
@@ -268,9 +268,9 @@ class AppTheme {
           vertical: 12,
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: _cardDarkColor,
-        selectedItemColor: _primaryDarkColor,
+        selectedItemColor: accentColor,
         unselectedItemColor: _textSecondaryDarkColor,
         elevation: 8,
         type: BottomNavigationBarType.fixed,
@@ -278,7 +278,7 @@ class AppTheme {
       checkboxTheme: CheckboxThemeData(
         fillColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return _primaryDarkColor;
+            return accentColor;
           }
           return Colors.transparent;
         }),
@@ -290,23 +290,23 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         thumbColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return _primaryDarkColor;
+            return accentColor;
           }
           return Colors.grey.shade700;
         }),
         trackColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return _primaryDarkColor.withOpacity(0.5);
+            return accentColor.withOpacity(0.5);
           }
           return Colors.grey.shade800;
         }),
       ),
-      tabBarTheme: const TabBarTheme(
-        labelColor: _primaryDarkColor,
+      tabBarTheme: TabBarTheme(
+        labelColor: accentColor,
         unselectedLabelColor: _textSecondaryDarkColor,
         indicator: UnderlineTabIndicator(
           borderSide: BorderSide(
-            color: _primaryDarkColor,
+            color: accentColor,
             width: 2,
           ),
         ),
