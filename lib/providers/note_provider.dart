@@ -582,6 +582,49 @@ class NoteProvider extends ChangeNotifier {
     }
   }
   
+  // Add method to ensure predefined categories exist
+  Future<void> ensurePredefinedCategories() async {
+    if (_noteService == null) {
+      debugPrint('Warning: noteService is null when adding predefined categories');
+      return;
+    }
+    
+    try {
+      // Predefined categories with colors matching the UI
+      final predefinedCategories = [
+        {'name': 'shopping', 'color': '#F44336'}, // Red
+        {'name': 'class', 'color': '#FFA726'}, // Orange
+        {'name': 'chores', 'color': '#607D8B'}, // Blue Gray
+        {'name': 'work', 'color': '#5C6BC0'}, // Indigo
+        {'name': 'workout', 'color': '#8E24AA'}, // Purple
+        {'name': 'holiday', 'color': '#00BCD4'}, // Cyan
+      ];
+      
+      // Get existing categories
+      final existingCategories = await _noteService!.categoryRepository.getAll();
+      final existingNames = existingCategories.map((c) => c.name.toLowerCase()).toList();
+      
+      // Create Uuid instance for generating IDs
+      final uuid = Uuid();
+      
+      // Create categories that don't exist yet
+      for (var category in predefinedCategories) {
+        if (!existingNames.contains(category['name']!.toLowerCase())) {
+          await createCategory(
+            name: category['name']!,
+            color: category['color']!,
+          );
+          debugPrint('Created predefined category: ${category['name']}');
+        }
+      }
+      
+      // Reload categories
+      await loadCategories();
+    } catch (e) {
+      debugPrint('Error ensuring predefined categories: $e');
+    }
+  }
+  
   // Sắp xếp lại thứ tự danh mục
   Future<void> reorderCategories(List<Category> categories) async {
     try {

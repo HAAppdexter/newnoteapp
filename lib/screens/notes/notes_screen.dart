@@ -52,10 +52,11 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
     super.initState();
     _loadNotes();
     _loadBannerAd();
-
-    // Đăng ký lắng nghe thay đổi từ NoteProvider
+    
+    // Ensure predefined categories exist
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+      noteProvider.ensurePredefinedCategories();
       noteProvider.addListener(_onNotesChanged);
     });
   }
@@ -228,12 +229,11 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
         noteProvider.changeFilter(NoteFilter.all);
         break;
       case '#Categories':
-        // Show categories in a bottom sheet
-        _showCategoriesBottomSheet();
+        // Don't show bottom sheet, just display the category chips in the UI
+        noteProvider.changeFilter(NoteFilter.all);
         break;
       case 'Calendar':
-        // Show calendar view
-        _showCalendarView();
+        // Show calendar view - don't show dialog immediately to let the UI update first
         break;
       case 'Unsorted':
         // Show notes without categories
@@ -324,13 +324,7 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
   }
 
   void _showCalendarView() {
-    // For now just reset to all notes with a message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Calendar view sẽ được phát triển trong bản cập nhật tiếp theo'),
-      ),
-    );
-    
+    // Filter notes by selected date instead of showing a message
     final noteProvider = Provider.of<NoteProvider>(context, listen: false);
     noteProvider.changeFilter(NoteFilter.all);
   }
@@ -351,6 +345,46 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
     if (!_showOnlyFavorites) return _notes;
     
     return _notes.where((note) => note.isPinned).toList();
+  }
+
+  // Add this method to filter by date
+  void _filterByDate(DateTime date) {
+    // Reset to all notes first
+    final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+    noteProvider.changeFilter(NoteFilter.all);
+    
+    // Then filter notes that have this date in their content or metadata
+    // This would be a simplified implementation - in a real app you'd use a proper date field
+    setState(() {
+      final dateStr = DateFormat('dd/MM/yy').format(date);
+      _notes = _notes.where((note) {
+        return note.content.contains(dateStr) || 
+               note.title.contains(dateStr) ||
+               DateFormat('dd/MM/yy').format(note.createdAt) == dateStr;
+      }).toList();
+    });
+    
+    // Show a message about filtering
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Showing notes for ${DateFormat('dd/MM/yy').format(date)}'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Add method to show date picker
+  void _showDatePicker() {
+    showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    ).then((selectedDate) {
+      if (selectedDate != null) {
+        _filterByDate(selectedDate);
+      }
+    });
   }
 
   @override
@@ -406,6 +440,10 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
       body: Column(
         children: [
           _buildTabsRow(),
+          if (_selectedTab == '#Categories')
+            _buildCategoryChips(),
+          if (_selectedTab == 'Calendar')
+            _buildCalendarOptions(),
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())
@@ -769,5 +807,132 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
     // Calculate luminance (0 is black, 1 is white)
     final double luminance = backgroundColor.computeLuminance();
     return luminance > 0.5 ? Colors.black : Colors.white;
+  }
+
+  Widget _buildCategoryChips() {
+    // Predefined categories with colors matching the image
+    final predefinedCategories = [
+      {'name': 'All', 'color': '#9E9E9E'}, // Gray
+      {'name': 'shopping', 'color': '#F44336'}, // Red
+      {'name': 'class', 'color': '#FFA726'}, // Orange
+      {'name': 'chores', 'color': '#607D8B'}, // Blue Gray
+      {'name': 'work', 'color': '#5C6BC0'}, // Indigo
+      {'name': 'workout', 'color': '#8E24AA'}, // Purple
+      {'name': 'holiday', 'color': '#00BCD4'}, // Cyan
+    ];
+    
+    String selectedCategory = 'All'; // Default selected category
+    if (_selectedTab == '#Categories' && Provider.of<NoteProvider>(context).selectedCategoryId.isNotEmpty) {
+      // Try to match with actual selected category
+      final noteProvider = Provider.of<NoteProvider>(context);
+      final categories = noteProvider.categories;
+      for (var category in categories) {
+        if (category.id == noteProvider.selectedCategoryId) {
+          selectedCategory = category.name;
+          break;
+        }
+      }
+    }
+    
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: predefinedCategories.length,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        itemBuilder: (context, index) {
+          final category = predefinedCategories[index];
+          final isSelected = category['name'] == selectedCategory;
+          final color = AppTheme.hexToColor(category['color']!);
+          
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FilterChip(
+              selected: isSelected,
+              label: Text(
+                category['name']!,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              backgroundColor: color.withOpacity(0.2),
+              selectedColor: color,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: color,
+                  width: 1,
+                ),
+              ),
+              onSelected: (selected) {
+                if (category['name'] == 'All') {
+                  // Handle "All" category
+                  Provider.of<NoteProvider>(context, listen: false).clearCategorySelection();
+                } else {
+                  // Find the actual category from the provider to get its ID
+                  final noteProvider = Provider.of<NoteProvider>(context, listen: false);
+                  final categories = noteProvider.categories;
+                  for (var cat in categories) {
+                    if (cat.name.toLowerCase() == category['name']!.toLowerCase()) {
+                      noteProvider.selectCategory(cat.id);
+                      break;
+                    }
+                  }
+                }
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // New method to build calendar filter options
+  Widget _buildCalendarOptions() {
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        children: [
+          _buildCalendarOptionChip('today', () {
+            _filterByDate(DateTime.now());
+          }),
+          const SizedBox(width: 8),
+          _buildCalendarOptionChip('tomorrow', () {
+            _filterByDate(DateTime.now().add(const Duration(days: 1)));
+          }),
+          const SizedBox(width: 8),
+          _buildCalendarOptionChip('set date', () {
+            _showDatePicker();
+          }),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to create calendar option chips
+  Widget _buildCalendarOptionChip(String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade400, width: 1),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
+          ),
+        ),
+      ),
+    );
   }
 } 
