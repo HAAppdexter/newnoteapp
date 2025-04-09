@@ -949,4 +949,153 @@ class _NotesScreenState extends State<NotesScreen> with AutomaticKeepAliveClient
       ),
     );
   }
+
+  // Add this method to build the drawer menu
+  Widget _buildDrawerMenu() {
+    return Drawer(
+      backgroundColor: Colors.black87,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              color: Colors.black,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      // Logo with colored squares
+                      Container(
+                        height: 45,
+                        child: Row(
+                          children: [
+                            // Top row of squares
+                            Column(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(width: 25, height: 25, color: Colors.amber),
+                                    const SizedBox(width: 2),
+                                    Container(width: 25, height: 25, color: Colors.purpleAccent.shade100),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                // Bottom row of squares
+                                Row(
+                                  children: [
+                                    Container(width: 25, height: 25, color: Colors.redAccent.shade100),
+                                    const SizedBox(width: 2),
+                                    Container(
+                                      width: 25, 
+                                      height: 25, 
+                                      color: Colors.green.shade300,
+                                      child: const Center(
+                                        child: Icon(Icons.check, color: Colors.white, size: 20),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'My notes',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  _buildDrawerItem(Icons.note_outlined, 'Notes', () {
+                    Navigator.pop(context);
+                  }),
+                  _buildDrawerItem(Icons.category_outlined, 'Manage categories', () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const CategoriesScreen(),
+                      ),
+                    );
+                  }),
+                  const Divider(color: Colors.grey, height: 1),
+                  _buildDrawerItem(Icons.person_outline, 'Profile', () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile screen will be available soon')),
+                    );
+                  }),
+                  _buildDrawerItem(Icons.settings_outlined, 'Settings', () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Settings screen will be available soon')),
+                    );
+                  }),
+                  _buildDrawerItem(Icons.block_outlined, 'Отключить рекламу', () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Remove ads feature will be available soon')),
+                    );
+                  }),
+                  _buildDrawerItem(Icons.share_outlined, 'Share with friends', () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Share feature will be available soon')),
+                    );
+                  }),
+                  _buildDrawerItem(Icons.star_border_outlined, 'Rate the app', () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Rate app feature will be available soon')),
+                    );
+                  }),
+                  _buildDrawerItem(Icons.email_outlined, 'Contact the support team', () {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Contact support feature will be available soon')),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build drawer items
+  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+      leading: Icon(
+        icon,
+        color: Colors.white,
+        size: 26,
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
 } 
